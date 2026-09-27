@@ -1,0 +1,24 @@
+# The "dpdpkit" meta-package: `pip install dpdpkit` installs core; extras pull in adapters.
+# Its version always equals dpdpkit-core's (scripts/bump-version.sh keeps them in step).
+# Add an extra only once its package is published (django, pii, server, enterprise follow in later phases).
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dpdpkit"
+version = "0.1.0.dev0"
+description = "Developer toolkit for India's DPDP Act, 2023 and DPDP Rules, 2025 (meta-package)."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = ["dpdpkit-core==0.1.0.dev0"]
+
+[project.optional-dependencies]
+fastapi = ["dpdpkit-fastapi>=0.1.0.dev0,<0.2"]
+
+[project.urls]
+Homepage = "https://github.com/dpdpkit-dev"
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true

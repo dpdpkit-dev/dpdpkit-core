@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Sibling repos are installed from main so a core PR is tested against unreleased policy packs.
+  SIBLINGS: >-
+    dpdpkit-policies @ git+https://github.com/dpdpkit-dev/dpdpkit-policies@main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: |
+          uv venv
+          uv pip install "$SIBLINGS" -e ".[dev]"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Types (mypy --strict)
+        run: mypy
+      - name: Tests (unit, tamper, property)
+        run: pytest --cov --cov-report=xml
+      - name: Meta-package builds
+        run: uv build meta --out-dir dist-meta
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv && uv pip install "$SIBLINGS" -e . && uvx pip-audit --python .venv/bin/python
