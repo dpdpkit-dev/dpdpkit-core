@@ -45,4 +45,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv venv && uv pip install "$SIBLINGS" -e . && uvx pip-audit --python .venv/bin/python
+      - run: uv venv && uv pip install "$SIBLINGS" -e . pip-audit && .venv/bin/pip-audit --skip-editable

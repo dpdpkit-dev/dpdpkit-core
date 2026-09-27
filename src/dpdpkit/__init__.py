@@ -8,7 +8,7 @@ from pkgutil import extend_path
 
 __path__ = extend_path(__path__, __name__)
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0a1"
 
 from .config import kit_from_config, load_config, sync_notice
 from .errors import (

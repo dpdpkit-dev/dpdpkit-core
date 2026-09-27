@@ -7,15 +7,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dpdpkit"
-version = "0.1.0.dev0"
+version = "0.1.0a1"
 description = "Developer toolkit for India's DPDP Act, 2023 and DPDP Rules, 2025 (meta-package)."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
-dependencies = ["dpdpkit-core==0.1.0.dev0"]
+dependencies = ["dpdpkit-core==0.1.0a1"]
 
 [project.optional-dependencies]
-fastapi = ["dpdpkit-fastapi>=0.1.0.dev0,<0.2"]
+fastapi = ["dpdpkit-fastapi>=0.1.0a1,<0.2"]
 
 [project.urls]
 Homepage = "https://github.com/dpdpkit-dev"

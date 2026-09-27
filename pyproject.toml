@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
   "pydantic>=2.6,<3",
   "pyyaml>=6.0",
-  "dpdpkit-policies>=2026.10",
+  "dpdpkit-policies>=2026.10.0a1",
 ]
 
 [project.optional-dependencies]
