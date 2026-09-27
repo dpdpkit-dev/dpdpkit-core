@@ -1,6 +1,11 @@
 # Release on tag vX.Y.Z. Builds dpdpkit-core and the dpdpkit meta-package at the same version.
 # .devN tags go to TestPyPI; aN, bN, rcN and final tags go to PyPI via trusted publishing.
 # Release-train order: policies (if changed) -> core -> adapters -> JS packages.
+#
+# PyPI trusted publishers (one per project; PyPI rejects two pending publishers with identical settings):
+#   dpdpkit-core : repo dpdpkit-dev/dpdpkit-core, workflow release.yml, environment pypi
+#   dpdpkit      : repo dpdpkit-dev/dpdpkit-core, workflow release.yml, environment pypi-meta
+# (TestPyPI: the same with environments testpypi / testpypi-meta.)
 name: Release
 
 on:
@@ -29,16 +34,22 @@ jobs:
           if [[ "$version" == *dev* ]]; then echo "target=testpypi"; else echo "target=pypi"; fi >> "$GITHUB_OUTPUT"
       - name: Test against published dependencies
         run: |
-          uv venv && uv pip install -e ".[dev]" ${{ steps.v.outputs.target == 'testpypi' && '--prerelease=allow --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match' || '' }}
+          uv venv
+          # dpdpkit-policies may have been released moments ago; give PyPI up to ~10 minutes.
+          for attempt in $(seq 1 20); do
+            uv pip install --refresh -e ".[dev]" ${{ steps.v.outputs.target == 'testpypi' && '--prerelease=allow --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match' || '' }} && break
+            if [ "$attempt" = 20 ]; then echo "dependencies not available on the index"; exit 1; fi
+            echo "dependencies not on the index yet; retrying in 30s ($attempt/20)"; sleep 30
+          done
           .venv/bin/pytest -q
       - name: Build core and meta
         run: |
-          uv build --out-dir dist
-          uv build meta --out-dir dist
+          uv build --out-dir dist/core
+          uv build meta --out-dir dist/meta
       - name: Tag must match both package versions
         run: |
-          ls dist/dpdpkit_core-${{ steps.v.outputs.version }}-*.whl
-          ls dist/dpdpkit-${{ steps.v.outputs.version }}-*.whl
+          ls dist/core/dpdpkit_core-${{ steps.v.outputs.version }}-*.whl
+          ls dist/meta/dpdpkit-${{ steps.v.outputs.version }}-*.whl
       - name: SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -48,48 +59,55 @@ jobs:
           upload-artifact: false
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: |
-            dist/
-            sbom.spdx.json
-
-  publish-testpypi:
-    needs: build
-    if: needs.build.outputs.target == 'testpypi'
-    runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with: { name: dist }
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          name: dist-core
+          path: dist/core/
+      - uses: actions/upload-artifact@v4
         with:
-          repository-url: https://test.pypi.org/legacy/
+          name: dist-meta
+          path: dist/meta/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
 
-  publish-pypi:
+  publish-core:
     needs: build
-    if: needs.build.outputs.target == 'pypi'
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: ${{ needs.build.outputs.target }}
     permissions:
       id-token: write
       attestations: write
     steps:
       - uses: actions/download-artifact@v4
-        with: { name: dist }
+        with: { name: dist-core, path: dist }
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ needs.build.outputs.target == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+
+  # The meta-package pins dpdpkit-core==X.Y.Z, so it is uploaded only after core is on the index.
+  publish-meta:
+    needs: [build, publish-core]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.build.outputs.target }}-meta
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist-meta, path: dist }
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ needs.build.outputs.target == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
 
   github-release:
-    needs: [build, publish-testpypi, publish-pypi]
-    if: always() && needs.build.result == 'success' && (needs.publish-pypi.result == 'success' || needs.publish-testpypi.result == 'success')
+    needs: [build, publish-core, publish-meta]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: { name: dist }
+        with: { path: artifacts }
       - name: Release notes from CHANGELOG.md
         run: |
           awk -v v="${{ needs.build.outputs.version }}" '
@@ -101,5 +119,6 @@ jobs:
           body_path: notes.md
           prerelease: ${{ needs.build.outputs.prerelease == 'true' }}
           files: |
-            dist/*
-            sbom.spdx.json
+            artifacts/dist-core/*
+            artifacts/dist-meta/*
+            artifacts/sbom/sbom.spdx.json
