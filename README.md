@@ -53,6 +53,7 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 | `dpdpkit.notify` | Notifier protocol with delivery receipts; memory, console and SMTP transports |
 | `dpdpkit.ses` | Amazon SES email transport (`dpdpkit-core[ses]`); optional tracked delivery from SES events via SQS |
 | `dpdpkit.export` | Principal export (JSON, HTML) and evidence packs (CSV + PDF zip) |
+| `dpdpkit.telemetry` | Opt-in anonymous usage telemetry; off by default (see below) |
 
 ## Fail-safe rules
 
@@ -72,7 +73,45 @@ dpdpkit ledger verify --kit myapp.dpdp:kit     # exit code 2 if tampered
 dpdpkit retention preview --kit myapp.dpdp:kit
 dpdpkit export --principal u_42 --format html --kit myapp.dpdp:kit
 dpdpkit export --evidence --out evidence.zip --kit myapp.dpdp:kit
+dpdpkit telemetry status | enable | disable | show
 ```
+
+## Telemetry
+
+dpdpkit does not call home. Telemetry is **off by default** and stays off unless you opt in.
+
+| To | Do |
+| --- | --- |
+| See whether it is on, and why | `dpdpkit telemetry status` |
+| Opt in for your user | `dpdpkit telemetry enable` (stores a random install id in `telemetry.json`) |
+| Opt out and delete the install id | `dpdpkit telemetry disable` |
+| Opt in for one process or container | `DPDPKIT_TELEMETRY=1` (a fresh random id per process unless you ran `enable`) |
+| Force it off, whatever is stored | `DPDPKIT_TELEMETRY=0` or `DO_NOT_TRACK=1` |
+| Choose the collector | `DPDPKIT_TELEMETRY_URL=https://…` (HTTPS only) |
+| See exactly what would be sent | `dpdpkit telemetry show` |
+
+`telemetry.json` lives in `DPDPKIT_CONFIG_DIR` if set, else `%APPDATA%\dpdpkit` on Windows, else
+`$XDG_CONFIG_HOME/dpdpkit` or `~/.config/dpdpkit`.
+
+There is no default collector yet, so opting in sends nothing until `DPDPKIT_TELEMETRY_URL` is set.
+
+When it is on and a collector is set, dpdpkit posts one small JSON document per event per process. It sends
+`kit_started` when a `Kit` is created and `cli` when a `dpdpkit` command runs. Each document is sent from a
+background thread with a 2-second timeout, and failures are ignored. A document holds only these fields:
+
+| Field | Example |
+| --- | --- |
+| `schema` | `1` |
+| `install_id` | random hex id, not derived from your machine |
+| `event` | `kit_started` or `cli` |
+| `dpdpkit_core`, `packages` | installed `dpdpkit*` distributions and versions |
+| `python`, `os` | `3.12`, `Linux` |
+| `policy` (`kit_started`) | a shipped pack id such as `dpdp-rules-2025.v1`, or `custom` |
+| `command` (`cli`) | the top-level command name, such as `ledger` |
+
+It never includes principals, tenants, consent or request data, configuration, notice text, file paths or
+host names. The code refuses any other field.
+Any HTTP request reveals the sender's IP address to the collector. A collector for dpdpkit must not store it.
 
 ## Writing an adapter
 

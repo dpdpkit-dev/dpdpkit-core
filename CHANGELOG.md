@@ -13,6 +13,9 @@ All code packages in the dpdpkit release train share one version number.
 - `dpdpkit.ses.SesNotifier` (optional `ses` extra, boto3). `track_delivery=True` keeps messages queued until
   SES reports delivery; `poll_ses_events()` applies Delivery/Bounce/Reject events from an SQS queue.
 - `dpdpkit[ses]` extra on the meta-package.
+- Opt-in anonymous telemetry (`dpdpkit.telemetry`), **off by default**: `dpdpkit telemetry status|enable|disable|show`,
+  `DPDPKIT_TELEMETRY`, `DO_NOT_TRACK`, `DPDPKIT_TELEMETRY_URL`. There is no default collector yet, so nothing is
+  sent until `DPDPKIT_TELEMETRY_URL` is set. See the README for the full list of fields.
 - Deprecation support: `DpdpkitDeprecationWarning`, `warn_deprecated()`, `moved()`; a test enforces the
   standard wording and a two-minor-release minimum for every `@deprecated` in the source.
 

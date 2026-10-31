@@ -24,6 +24,7 @@ from typing import Any
 
 import yaml
 
+from . import telemetry
 from .config import STARTER_CONFIG
 from .errors import DpdpkitError, LedgerTampered
 from .kit import Kit
@@ -168,6 +169,29 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_telemetry(args: argparse.Namespace) -> int:
+    if args.telemetry_command == "enable":
+        current = telemetry.enable()
+        print(f"telemetry enabled; install id {current.install_id} stored in {current.state_file}")
+    elif args.telemetry_command == "disable":
+        removed = telemetry.disable()
+        current = telemetry.status()
+        print("telemetry disabled; install id deleted" if removed else "telemetry was not enabled for this user")
+    else:
+        current = telemetry.status()
+    if args.telemetry_command == "show":
+        print("# the document sent when `dpdpkit ledger` runs; kit start-up sends `policy` instead", file=sys.stderr)
+        print(json.dumps(telemetry.payload("cli", current.install_id, command="ledger"), indent=2))
+        return 0
+    print(f"status: {current.reason}")
+    if current.enabled and current.endpoint is None:
+        print("endpoint: none (set DPDPKIT_TELEMETRY_URL to an https:// collector); nothing is sent")
+    elif current.endpoint:
+        print(f"endpoint: {current.endpoint}")
+    print("run `dpdpkit telemetry show` to see exactly what would be sent")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dpdpkit", description="dpdpkit command line")
     parser.add_argument("--version", action="version", version=f"dpdpkit-core {_version()}")
@@ -210,6 +234,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--kit")
     p.set_defaults(func=_cmd_export)
 
+    p = sub.add_parser("telemetry", help="opt in to or out of anonymous usage telemetry (off by default)")
+    p.add_argument("telemetry_command", choices=["status", "enable", "disable", "show"], nargs="?", default="status")
+    p.set_defaults(func=_cmd_telemetry)
+
     for ep in entry_points(group="dpdpkit.cli"):
         try:
             ep.load()(sub)
@@ -226,11 +254,15 @@ def _version() -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    ping = None if args.command == "telemetry" else telemetry.record("cli", command=args.command)
     try:
         return int(args.func(args))
     except DpdpkitError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    finally:
+        if ping is not None:
+            ping.join(telemetry.TIMEOUT_SECONDS)
 
 
 if __name__ == "__main__":  # pragma: no cover

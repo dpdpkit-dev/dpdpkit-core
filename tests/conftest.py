@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
 import yaml
 
-from dpdpkit import Contact, InMemoryRepository, Kit, MemoryNotifier, kit_from_config, sync_notice
+from dpdpkit import Contact, InMemoryRepository, Kit, MemoryNotifier, kit_from_config, sync_notice, telemetry
 from dpdpkit.config import STARTER_CONFIG
 
 T0 = dt.datetime(2027, 6, 1, 9, 0, tzinfo=dt.timezone.utc)
@@ -23,6 +23,22 @@ class FakeClock:
     def advance(self, **kwargs: float) -> dt.datetime:
         self.now += dt.timedelta(**kwargs)
         return self.now
+
+
+@pytest.fixture(autouse=True)
+def no_telemetry(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Keep every test away from the developer's own opt-in and fail if anything is sent unasked.
+
+    Tests that opt in replace ``telemetry._post`` themselves.
+    """
+    for var in ("DPDPKIT_TELEMETRY", "DPDPKIT_TELEMETRY_URL", "DO_NOT_TRACK"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("DPDPKIT_CONFIG_DIR", str(tmp_path_factory.mktemp("dpdpkit-config")))
+    monkeypatch.setattr(telemetry, "_sent", set())
+    unexpected: list[str] = []
+    monkeypatch.setattr(telemetry, "_post", lambda url, body, timeout: unexpected.append(url))
+    yield
+    assert not unexpected, f"telemetry was sent without opting in: {unexpected}"
 
 
 @pytest.fixture

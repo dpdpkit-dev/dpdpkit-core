@@ -179,7 +179,7 @@ def _post(url: str, body: bytes, timeout: float) -> None:
 def _deliver(url: str, body: bytes) -> None:
     try:
         _post(url, body, TIMEOUT_SECONDS)
-    except Exception:  # telemetry must never surface an error
+    except Exception:  # noqa: S110 - telemetry must never surface an error
         pass
 
 
