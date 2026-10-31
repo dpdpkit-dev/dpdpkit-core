@@ -6,5 +6,6 @@ v="${1:?usage: bump-version.sh X.Y.Z}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 sed -i -E "s/^__version__ = \".*\"/__version__ = \"$v\"/" "$root/src/dpdpkit/__init__.py"
 sed -i -E "s/^version = \".*\"/version = \"$v\"/" "$root/meta/pyproject.toml"
-sed -i -E "s/\"dpdpkit-core==[^\"]*\"/\"dpdpkit-core==$v\"/" "$root/meta/pyproject.toml"
+# Every pin on core in the meta-package, with or without extras: "dpdpkit-core==X", "dpdpkit-core[ses]==X".
+sed -i -E 's/"dpdpkit-core(\[[a-z,]+\])?==[^"]*"/"dpdpkit-core\1=='"$v"'"/g' "$root/meta/pyproject.toml"
 echo "dpdpkit-core and dpdpkit set to $v — update CHANGELOG.md, commit, then: git tag -s v$v"

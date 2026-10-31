@@ -10,6 +10,9 @@ All code packages in the dpdpkit release train share one version number.
 - CLI: `dpdpkit ledger root --out FILE` appends to an anchor file; `dpdpkit ledger check-root --anchors FILE`
   checks the chains against the newest anchor (exit 2 on mismatch).
 - Event type constants `LEDGER_ROOT_EXPORTED` and `LEDGER_TAMPERED`.
+- `dpdpkit.ses.SesNotifier` (optional `ses` extra, boto3). `track_delivery=True` keeps messages queued until
+  SES reports delivery; `poll_ses_events()` applies Delivery/Bounce/Reject events from an SQS queue.
+- `dpdpkit[ses]` extra on the meta-package.
 
 ### Changed
 - `Ledger.check_root()` refuses a root hash from another tenant (`ValidationFailed`).
