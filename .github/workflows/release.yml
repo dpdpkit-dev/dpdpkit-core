@@ -23,7 +23,7 @@ jobs:
       prerelease: ${{ steps.v.outputs.prerelease }}
       target: ${{ steps.v.outputs.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v6
       - id: v
         run: |
@@ -105,7 +105,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with: { path: artifacts }
       - name: Release notes from CHANGELOG.md
