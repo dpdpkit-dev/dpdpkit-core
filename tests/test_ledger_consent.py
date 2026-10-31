@@ -14,8 +14,9 @@ from dpdpkit import (
     NotFound,
     ValidationFailed,
 )
+from dpdpkit.errors import SequenceConflict
 from dpdpkit.ledger import GENESIS, row_hash
-from dpdpkit.models import ConsentAction, ScheduleStatus
+from dpdpkit.models import ConsentAction, ConsentEvent, ScheduleStatus
 
 
 def test_grant_check_withdraw(kit: Kit) -> None:
@@ -165,3 +166,59 @@ def test_property_any_edit_is_detected(make_kit, ops, data) -> None:  # type: ig
     with pytest.raises(LedgerTampered) as exc:
         kit.ledger.verify()
     assert exc.value.row_id == rows[index].id
+
+
+class _ContendedRepository(InMemoryRepository):
+    """Fails the first ``conflicts`` consent appends, as if another writer took the sequence number."""
+
+    def __init__(self, conflicts: int) -> None:
+        super().__init__()
+        self.conflicts = conflicts
+
+    def append_consent_event(self, event: ConsentEvent) -> None:
+        if self.conflicts:
+            self.conflicts -= 1
+            raise SequenceConflict("taken")
+        super().append_consent_event(event)
+
+
+def test_append_retries_on_sequence_conflict(make_kit) -> None:  # type: ignore[no-untyped-def]
+    kit = make_kit(repository=_ContendedRepository(conflicts=2))
+    kit.consent.grant("u1", "marketing")
+    assert [e.seq for e in kit.repository.consent_events] == [1]
+    kit.ledger.verify()
+
+
+def test_append_gives_up_after_repeated_conflicts(make_kit) -> None:  # type: ignore[no-untyped-def]
+    kit = make_kit(repository=_ContendedRepository(conflicts=100))
+    with pytest.raises(SequenceConflict):
+        kit.consent.grant("u1", "marketing")
+
+
+def test_reading_and_verifying_page_through_long_chains(kit: Kit, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("dpdpkit.ledger._BATCH", 2)
+    for p in ("u1", "u2", "u3", "u4", "u5"):
+        kit.consent.grant(p, "marketing")
+        kit.rights.open(p, "access")
+    assert len(kit.repository.audit) > 2
+    assert [e.seq for e in kit.ledger.consent_events()] == [1, 2, 3, 4, 5]
+    assert len(list(kit.ledger.audit_entries())) == len(kit.repository.audit)
+    assert kit.ledger.verify().checked == 5 + len(kit.repository.audit)
+
+
+def test_root_hash_of_an_empty_chain_checks_clean(kit: Kit) -> None:
+    anchor = kit.ledger.root_hash()
+    assert anchor.consent_seq == 0 and anchor.consent_head == GENESIS
+    kit.consent.grant("u1", "marketing")
+    kit.ledger.check_root(anchor)
+
+
+def test_rewritten_row_fails_root_check(kit: Kit) -> None:
+    kit.consent.grant("u1", "marketing")
+    anchor = kit.ledger.root_hash()
+    repo = kit.repository
+    edited = repo.consent_events[-1].model_copy(update={"principal": "someone-else"})
+    repo.consent_events[-1] = edited.model_copy(update={"hash": row_hash(edited)})
+    with pytest.raises(LedgerTampered) as exc:
+        kit.ledger.check_root(anchor)
+    assert exc.value.row_id == edited.id and "differs" in exc.value.reason

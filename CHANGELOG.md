@@ -4,6 +4,17 @@ All code packages in the dpdpkit release train share one version number.
 
 ## Unreleased
 
+### Added
+- `Ledger.export_root(*sinks)` writes the root hash to each `RootSink` and publishes `ledger.root_exported`.
+- `RootSink` protocol and `FileRootSink` (JSON lines; `read()`, `latest(tenant_id)`).
+- CLI: `dpdpkit ledger root --out FILE` appends to an anchor file; `dpdpkit ledger check-root --anchors FILE`
+  checks the chains against the newest anchor (exit 2 on mismatch).
+- Event type constants `LEDGER_ROOT_EXPORTED` and `LEDGER_TAMPERED`.
+
+### Changed
+- `Ledger.check_root()` refuses a root hash from another tenant (`ValidationFailed`).
+- CI enforces at least 95% line and branch coverage on `ledger`, `retention` and `rights`.
+
 ## 0.1.0a1 - 2026-09-27
 
 ### Added

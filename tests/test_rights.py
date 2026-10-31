@@ -104,3 +104,27 @@ def test_overdue_and_sla(kit: Kit, clock) -> None:  # type: ignore[no-untyped-de
     assert sla.overdue and not sla.ceiling_breached and sla.remaining_seconds < 0
     clock.advance(days=60)
     assert kit.rights.sla(req).ceiling_breached
+
+
+def test_nomination_waits_for_identity_then_records(make_kit) -> None:  # type: ignore[no-untyped-def]
+    class Verifier:
+        def begin(self, request: RightsRequest) -> None:
+            pass
+
+    kit = make_kit(identity_verifier=Verifier())
+    req = kit.rights.open("u1", "nomination", {"name": "Asha", "contact": "asha@example.in"})
+    assert req.status is RequestStatus.IDENTITY_PENDING and kit.rights.nominees("u1") == []
+    done = kit.rights.verify_identity(req.id, True, actor="otp")
+    assert done.status is RequestStatus.COMPLETED and done.outcome == "nominee_recorded"
+    assert [n.name for n in kit.rights.nominees("u1")] == ["Asha"]
+    with pytest.raises(InvalidTransition):
+        kit.rights.verify_identity(req.id, True, actor="otp")
+
+
+def test_closed_requests_refuse_assignment_and_empty_responses(kit: Kit) -> None:
+    req = kit.rights.open("u1", "access")
+    with pytest.raises(ValidationFailed):
+        kit.rights.respond(req.id, "  ", actor="dpo")
+    kit.rights.respond(req.id, "Attached.", actor="dpo")
+    with pytest.raises(InvalidTransition):
+        kit.rights.assign(req.id, "handler@x", actor="admin")

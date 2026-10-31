@@ -37,6 +37,8 @@ jobs:
         run: mypy
       - name: Tests (unit, tamper, property)
         run: pytest --cov --cov-report=xml
+      - name: Coverage floor (ledger, retention, rights ≥ 95% each)
+        run: for m in ledger retention rights; do coverage report --include="*/dpdpkit/$m.py" --fail-under=95; done
       - name: Meta-package builds
         run: uv build meta --out-dir dist-meta
 

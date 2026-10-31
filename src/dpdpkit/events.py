@@ -38,6 +38,8 @@ ERASURE_COMPLETED = "erasure.completed"
 ERASURE_NEEDS_ATTENTION = "erasure.needs_attention"
 ERASURE_PROCESSOR_NOTIFIED = "erasure.processor_notified"
 EXPORT_REQUESTED = "export.requested"
+LEDGER_ROOT_EXPORTED = "ledger.root_exported"
+LEDGER_TAMPERED = "ledger.tampered"
 
 
 class Event(BaseModel):

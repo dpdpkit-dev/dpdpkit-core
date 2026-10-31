@@ -7,8 +7,19 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from dpdpkit import InMemoryRepository, Kit, MemoryNotifier, Policy, Registry, ScheduleStatus, sync_notice
-from dpdpkit.models import DeliveryStatus, RetentionTrigger
+from dpdpkit import (
+    Contact,
+    InMemoryRepository,
+    InvalidTransition,
+    Kit,
+    MemoryNotifier,
+    NotFound,
+    Policy,
+    Registry,
+    ScheduleStatus,
+    sync_notice,
+)
+from dpdpkit.models import DeliveryReceipt, DeliveryStatus, Message, RetentionTrigger
 
 from .conftest import T0, FakeClock
 
@@ -270,3 +281,132 @@ def test_property_never_erase_without_delivered_warning_and_full_window(
         assert receipt is not None and receipt.status is DeliveryStatus.DELIVERED
         assert not any(s.warned_at < t <= s.erased_at for t in activity.get(s.principal, []))
     kit.ledger.verify()
+
+
+# ------------------------------------------------------------------ edge cases
+
+
+def test_manual_schedule_always_leaves_room_for_the_warning(kit: Kit, clock: FakeClock) -> None:
+    assert kit.retention.purpose_completed("u1", "marketing") is None  # wrong trigger
+    s = kit.retention.schedule("u1", "billing", clock.now + dt.timedelta(days=5), reason="contract ended", actor="dpo")
+    assert s.trigger is RetentionTrigger.PURPOSE_COMPLETE and s.erase_at == clock.now + dt.timedelta(days=5)
+    short = kit.retention.schedule("u1", "billing", clock.now, reason="now", actor="dpo")
+    assert short.erase_at == clock.now + kit.policy.erasure_pre_notice
+
+
+def test_purpose_completed_trigger(make_kit, config, clock) -> None:  # type: ignore[no-untyped-def]
+    config["purposes"].append(
+        {
+            "id": "delivery",
+            "title": "Deliver your order",
+            "data_items": ["name"],
+            "retention": {"trigger": "purpose_complete", "period_days": 10},
+        }
+    )
+    config["purposes"].append(
+        {"id": "support", "title": "Support", "data_items": ["email"], "retention": {"trigger": "purpose_complete"}}
+    )
+    kit = make_kit(config=config)
+    s = kit.retention.purpose_completed("u1", "delivery", actor="ops")
+    assert s is not None and s.erase_at == clock.now + dt.timedelta(days=10)
+    soon = kit.retention.purpose_completed("u1", "support")
+    assert soon is not None and soon.erase_at == clock.now + kit.policy.erasure_pre_notice
+
+
+def test_inactivity_purpose_without_period_is_not_scheduled(make_kit, config) -> None:  # type: ignore[no-untyped-def]
+    config["purposes"].append(
+        {"id": "forum", "title": "Forum", "data_items": ["name"], "retention": {"trigger": "last_activity"}}
+    )
+    kit = make_kit(config=config)
+    kit.retention.record_activity("u1")
+    assert "forum" not in {s.purpose for s in kit.retention.schedules("u1")}
+
+
+def test_tenant_wide_hold_and_unknown_release(kit, clock, notifier) -> None:  # type: ignore[no-untyped-def]
+    kit.retention.record_activity("u1")
+    hold = kit.retention.place_hold("u1", "litigation", actor="dpo")
+    assert hold.purpose is None and kit.retention.holds("u1") == [hold]
+    clock.advance(days=29)
+    first, second = kit.retention.run(), kit.retention.run()
+    assert first.held == second.held == 1 and notifier.sent == []
+    held = _schedule(kit, "u1", "analytics")
+    assert held.status is ScheduleStatus.HELD
+    assert [a.action for a in kit.ledger.audit_entries(subject_id=held.id)].count("retention.held") == 1
+    with pytest.raises(NotFound):
+        kit.retention.release_hold("lh_missing", actor="dpo")
+
+
+def test_contact_without_any_address_needs_attention(kit, clock, contacts) -> None:  # type: ignore[no-untyped-def]
+    contacts["u3"] = Contact(locale="hi")
+    kit.retention.record_activity("u3")
+    clock.advance(days=29)
+    kit.retention.run()
+    reasons = [s.attention_reason or "" for s in kit.retention.needs_attention() if s.principal == "u3"]
+    assert reasons and all("no contact" in r for r in reasons)
+
+
+def test_notifier_exception_is_recorded_not_raised(make_kit, clock) -> None:  # type: ignore[no-untyped-def]
+    class Broken:
+        def send(self, message: Message) -> DeliveryReceipt:
+            raise ConnectionError("smtp down")
+
+    kit = make_kit(notifier=Broken())
+    kit.retention.record_activity("u1")
+    clock.advance(days=29)
+    assert kit.retention.run().needs_attention == 1
+    s = _schedule(kit, "u1", "analytics")
+    assert "smtp down" in (s.attention_reason or "")
+    receipt = kit.repository.get_delivery(kit.tenant_id, s.warning_receipt_id)
+    assert receipt is not None and receipt.provider == "error"
+
+
+def test_queued_warning_reported_failed(kit, clock, notifier) -> None:  # type: ignore[no-untyped-def]
+    notifier.status = DeliveryStatus.QUEUED
+    kit.retention.record_activity("u1")
+    clock.advance(days=28)
+    kit.retention.run()
+    s = _schedule(kit, "u1", "analytics")
+    with pytest.raises(NotFound):
+        kit.retention.confirm_warning_delivery("dr_missing", True)
+    s = kit.retention.confirm_warning_delivery(s.warning_receipt_id, False, error="bounced")
+    assert s.status is ScheduleStatus.NEEDS_ATTENTION and "bounced" in (s.attention_reason or "")
+    receipt = kit.repository.get_delivery(kit.tenant_id, s.warning_receipt_id)
+    assert receipt is not None and receipt.status is DeliveryStatus.FAILED
+
+
+def test_confirmation_without_stored_receipt_never_marks_warned(kit, clock, notifier) -> None:  # type: ignore[no-untyped-def]
+    notifier.status = DeliveryStatus.QUEUED
+    kit.retention.record_activity("u1")
+    clock.advance(days=28)
+    kit.retention.run()
+    s = _schedule(kit, "u1", "analytics")
+    del kit.repository.deliveries[f"{kit.tenant_id}:{s.warning_receipt_id}"]
+    s = kit.retention.confirm_warning_delivery(s.warning_receipt_id, True)
+    assert s.status is ScheduleStatus.NEEDS_ATTENTION
+
+
+def test_erase_now_with_nothing_erasable_runs_no_handler(kit, erased) -> None:  # type: ignore[no-untyped-def]
+    result = kit.retention.erase_now("u1", reason="request", actor="dpo", purposes=["billing"])
+    assert result.retained_purposes == ["billing"] and result.erased_purposes == []
+    assert erased == []
+
+
+def test_erase_now_cancels_pending_schedules(kit, erased) -> None:  # type: ignore[no-untyped-def]
+    kit.retention.record_activity("u1")
+    result = kit.retention.erase_now("u1", reason="request", actor="dpo", purposes=["analytics"])
+    assert result.erased_purposes == ["analytics"] and erased == [("u1", ["analytics"])]
+    s = _schedule(kit, "u1", "analytics")
+    assert s.status is ScheduleStatus.CANCELLED and "erased on request" in (s.cancelled_reason or "")
+
+
+def test_resolve_guards_and_cancel(kit, clock) -> None:  # type: ignore[no-untyped-def]
+    with pytest.raises(NotFound):
+        kit.retention.resolve("es_missing", "retry", actor="dpo")
+    kit.retention.record_activity("u-unknown")
+    scheduled = _schedule(kit, "u-unknown", "analytics")
+    with pytest.raises(InvalidTransition):
+        kit.retention.resolve(scheduled.id, "cancel", actor="dpo")
+    clock.advance(days=29)
+    kit.retention.run()
+    s = kit.retention.resolve(scheduled.id, "cancel", actor="dpo")
+    assert s.status is ScheduleStatus.CANCELLED and s.cancelled_reason == "cancelled by administrator"

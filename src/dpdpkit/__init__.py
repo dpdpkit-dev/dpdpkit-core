@@ -23,6 +23,7 @@ from .errors import (
     ValidationFailed,
 )
 from .kit import ContactResolver, Kit
+from .ledger import FileRootSink, RootSink
 from .models import (
     ConsentStatus,
     Contact,
@@ -51,6 +52,7 @@ __all__ = [
     "ContactResolver",
     "DataItem",
     "DpdpkitError",
+    "FileRootSink",
     "InMemoryRepository",
     "InvalidTransition",
     "Kit",
@@ -72,6 +74,7 @@ __all__ = [
     "RetentionRule",
     "RetentionTrigger",
     "Role",
+    "RootSink",
     "ScheduleStatus",
     "SmtpNotifier",
     "ValidationFailed",

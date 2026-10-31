@@ -4,15 +4,22 @@ Each tenant has two chains: ``consent`` (grant/deny/withdraw events) and ``audit
 change). A row's hash is SHA-256 over its canonical JSON (all fields except ``hash``), which includes
 ``prev_hash`` and ``seq``. Editing a row breaks its own hash; deleting one breaks ``seq`` continuity;
 truncating the tail is caught by comparing with an exported :class:`~dpdpkit.models.RootHash`.
+
+Root hashes are only useful if they are kept somewhere the operator cannot rewrite. Call
+:meth:`Ledger.export_root` on a schedule with a :class:`RootSink`, and/or subscribe a webhook to the
+``ledger.root_exported`` event so a third party holds a copy.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING, Any, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 from ._util import canonical_json, new_id, sha256_hex
-from .errors import LedgerTampered, SequenceConflict
+from .errors import LedgerTampered, SequenceConflict, ValidationFailed
+from .events import LEDGER_ROOT_EXPORTED
 from .models import AuditEntry, ConsentAction, ConsentEvent, LedgerVerification, RootHash
 
 if TYPE_CHECKING:
@@ -28,6 +35,39 @@ Row = TypeVar("Row", ConsentEvent, AuditEntry)
 
 def row_hash(row: ConsentEvent | AuditEntry) -> str:
     return sha256_hex(canonical_json(row.model_dump(mode="python", exclude={"hash"})))
+
+
+class RootSink(Protocol):
+    """Somewhere exported root hashes are kept: a write-once bucket, a transparency log, a partner's API."""
+
+    def write(self, root: RootHash) -> None: ...
+
+
+class FileRootSink:
+    """Appends one JSON line per export. Point it at storage you cannot rewrite (an S3 bucket with
+    Object Lock, a WORM volume, a mounted share owned by someone else); a local file only protects
+    against accidents."""
+
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+
+    def write(self, root: RootHash) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as fh:
+            fh.write(root.model_dump_json() + "\n")
+
+    def read(self) -> list[RootHash]:
+        if not self.path.exists():
+            return []
+        return [
+            RootHash.model_validate(json.loads(line))
+            for line in self.path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    def latest(self, tenant_id: str) -> RootHash | None:
+        roots = [r for r in self.read() if r.tenant_id == tenant_id]
+        return max(roots, key=lambda r: (r.consent_seq + r.audit_seq, r.exported_at)) if roots else None
 
 
 class Ledger:
@@ -212,8 +252,26 @@ class Ledger:
             exported_at=self._kit.now(),
         )
 
+    def export_root(self, *sinks: RootSink) -> RootHash:
+        """Compute the current root hash, write it to each sink and publish ``ledger.root_exported``.
+
+        A sink that fails raises, so a scheduler surfaces the error instead of silently skipping an anchor.
+        """
+        root = self.root_hash()
+        for sink in sinks:
+            sink.write(root)
+        self._kit.events.publish(LEDGER_ROOT_EXPORTED, root.tenant_id, root.model_dump(mode="json"), root.exported_at)
+        return root
+
     def check_root(self, anchor: RootHash) -> None:
-        """Confirm the chains still contain the rows an earlier root export covered."""
+        """Confirm the chains still contain the rows an earlier root export covered.
+
+        Because every row hashes its predecessor, checking the newest anchor also covers every older one.
+        """
+        if anchor.tenant_id != self._kit.tenant_id:
+            raise ValidationFailed(
+                f"root hash belongs to tenant {anchor.tenant_id}, not {self._kit.tenant_id}", tenant_id=anchor.tenant_id
+            )
         for chain, seq, head, rows in (
             ("consent", anchor.consent_seq, anchor.consent_head, self.consent_events()),
             ("audit", anchor.audit_seq, anchor.audit_head, self.audit_entries()),

@@ -27,6 +27,7 @@ import yaml
 from .config import STARTER_CONFIG
 from .errors import DpdpkitError, LedgerTampered
 from .kit import Kit
+from .ledger import FileRootSink
 from .policy import Policy, available_packs
 
 
@@ -88,7 +89,29 @@ def _cmd_policy(args: argparse.Namespace) -> int:
 def _cmd_ledger(args: argparse.Namespace) -> int:
     kit = load_kit(args.kit)
     if args.ledger_command == "root":
-        print(kit.ledger.root_hash().model_dump_json(indent=2))
+        if args.out:
+            root = kit.ledger.export_root(FileRootSink(args.out))
+            print(f"appended root {root.root[:16]}… to {args.out}")
+        else:
+            print(kit.ledger.root_hash().model_dump_json(indent=2))
+        return 0
+    if args.ledger_command == "check-root":
+        if not args.anchors:
+            print("error: --anchors FILE is required (a file written by `dpdpkit ledger root --out`)", file=sys.stderr)
+            return 1
+        anchor = FileRootSink(args.anchors).latest(kit.tenant_id)
+        if anchor is None:
+            print(f"error: {args.anchors} has no root hash for tenant {kit.tenant_id}", file=sys.stderr)
+            return 1
+        try:
+            kit.ledger.check_root(anchor)
+        except LedgerTampered as exc:
+            print(f"FAILED: {exc}", file=sys.stderr)
+            return 2
+        print(
+            f"ok: chains still contain the rows covered by the root exported {anchor.exported_at.isoformat()} "
+            f"(consent seq {anchor.consent_seq}, audit seq {anchor.audit_seq})"
+        )
         return 0
     try:
         result = kit.ledger.verify()
@@ -166,8 +189,10 @@ def build_parser() -> argparse.ArgumentParser:
     diff.add_argument("new")
     p.set_defaults(func=_cmd_policy)
 
-    p = sub.add_parser("ledger", help="verify the hash chain or print the root hash")
-    p.add_argument("ledger_command", choices=["verify", "root"])
+    p = sub.add_parser("ledger", help="verify the hash chain, export the root hash or check against one")
+    p.add_argument("ledger_command", choices=["verify", "root", "check-root"])
+    p.add_argument("--out", help="root: append the root hash to this JSON-lines file instead of printing it")
+    p.add_argument("--anchors", help="check-root: JSON-lines file of exported root hashes")
     p.add_argument("--kit")
     p.set_defaults(func=_cmd_ledger)
 

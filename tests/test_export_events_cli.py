@@ -9,9 +9,17 @@ from pathlib import Path
 
 import pytest
 
-from dpdpkit import Kit
+from dpdpkit import FileRootSink, Kit, ValidationFailed
 from dpdpkit.cli import main
-from dpdpkit.events import EventBus, WebhookDispatcher, WebhookEndpoint, sign_payload, verify_signature
+from dpdpkit.events import (
+    LEDGER_ROOT_EXPORTED,
+    Event,
+    EventBus,
+    WebhookDispatcher,
+    WebhookEndpoint,
+    sign_payload,
+    verify_signature,
+)
 from dpdpkit.models import Channel, DeliveryStatus, Message
 from dpdpkit.notify import SmtpNotifier, render
 
@@ -112,3 +120,36 @@ def test_cli_init_policy_and_kit_commands(
     assert out.read_text(encoding="utf-8").startswith("<!doctype html>")
     kit.repository.consent_events[0] = kit.repository.consent_events[0].model_copy(update={"source": "x"})
     assert main(["ledger", "verify", "--kit", "fake_app:kit"]) == 2
+
+
+def test_root_export_and_check(
+    tmp_path: Path, kit: Kit, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    published: list[Event] = []
+    kit.events.subscribe(LEDGER_ROOT_EXPORTED, published.append)
+    module = types.ModuleType("fake_app")
+    module.kit = kit  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fake_app", module)
+    anchors = tmp_path / "anchors" / "roots.jsonl"
+
+    assert main(["ledger", "check-root", "--kit", "fake_app:kit"]) == 1
+    assert main(["ledger", "check-root", "--anchors", str(anchors), "--kit", "fake_app:kit"]) == 1
+    kit.consent.grant("u1", "marketing")
+    assert main(["ledger", "root", "--out", str(anchors), "--kit", "fake_app:kit"]) == 0
+    kit.consent.grant("u2", "marketing")
+    assert main(["ledger", "root", "--out", str(anchors), "--kit", "fake_app:kit"]) == 0
+    assert [r.consent_seq for r in FileRootSink(anchors).read()] == [1, 2]
+    assert [e.data["consent_seq"] for e in published] == [1, 2]
+    assert main(["ledger", "check-root", "--anchors", str(anchors), "--kit", "fake_app:kit"]) == 0
+    assert "consent seq 2" in capsys.readouterr().out
+
+    kit.repository.consent_events.pop()  # truncation keeps the chain valid but not the newest anchor
+    assert main(["ledger", "verify", "--kit", "fake_app:kit"]) == 0
+    assert main(["ledger", "check-root", "--anchors", str(anchors), "--kit", "fake_app:kit"]) == 2
+
+
+def test_root_from_another_tenant_is_refused(kit: Kit) -> None:
+    anchor = kit.ledger.root_hash().model_copy(update={"tenant_id": "other"})
+    with pytest.raises(ValidationFailed):
+        kit.ledger.check_root(anchor)
+    assert FileRootSink("does-not-exist.jsonl").latest(kit.tenant_id) is None
