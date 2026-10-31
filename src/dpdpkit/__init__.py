@@ -11,6 +11,7 @@ __path__ = extend_path(__path__, __name__)
 __version__ = "0.1.0a1"
 
 from .config import kit_from_config, load_config, sync_notice
+from .deprecation import DpdpkitDeprecationWarning
 from .errors import (
     ConfigError,
     ConsentRequired,
@@ -51,6 +52,7 @@ __all__ = [
     "Contact",
     "ContactResolver",
     "DataItem",
+    "DpdpkitDeprecationWarning",
     "DpdpkitError",
     "FileRootSink",
     "InMemoryRepository",
