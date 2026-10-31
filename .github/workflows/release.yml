@@ -78,7 +78,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: dist-core, path: dist }
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -93,7 +93,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: dist-meta, path: dist }
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -106,7 +106,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { path: artifacts }
       - name: Release notes from CHANGELOG.md
         run: |
