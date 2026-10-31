@@ -8,6 +8,7 @@ import secrets
 import warnings
 from collections.abc import Callable, Iterable, Mapping
 
+from . import telemetry
 from ._util import Clock, as_utc, utcnow
 from .consent import ConsentService
 from .errors import ConfigError, PolicyError
@@ -17,7 +18,7 @@ from .ledger import Ledger
 from .models import DEFAULT_TENANT, Contact
 from .notices import NoticeService
 from .notify import Notifier, NullNotifier
-from .policy import Policy
+from .policy import Policy, available_packs
 from .registry import Registry
 from .repository import Repository
 from .retention import RetentionService
@@ -85,6 +86,8 @@ class Kit:
         self.signing_key = signing_key.encode() if isinstance(signing_key, str) else signing_key
 
         self._bind()
+        if telemetry.status().will_send:  # opt-in only; custom pack ids stay local
+            telemetry.record("kit_started", policy=policy.id if policy.id in available_packs() else "custom")
 
     def _bind(self) -> None:
         self.ledger = Ledger(self)
