@@ -29,7 +29,7 @@ jobs:
       - name: Install
         run: |
           uv venv
-          uv pip install "$SIBLINGS" -e ".[dev]"
+          uv pip install "$SIBLINGS" -e ".[dev,ses]"  # ses: run the boto3 Stubber tests
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Lint
         run: ruff check . && ruff format --check .

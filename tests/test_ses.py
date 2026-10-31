@@ -139,3 +139,54 @@ def test_other_tracked_receipts_are_updated(tracked: tuple[Kit, FakeSes]) -> Non
     assert isinstance(stored, DeliveryReceipt) and stored.status is DeliveryStatus.DELIVERED
     assert apply_ses_event(kit, ses_event("Delivery", receipt.id)) is None  # already final
     assert apply_ses_event(kit, ses_event("Delivery", "dr_unknown")) is None
+
+
+def test_requests_match_the_aws_service_models(make_kit: Callable[..., Kit], monkeypatch: pytest.MonkeyPatch) -> None:
+    """With the `ses` extra installed, botocore's Stubber checks every request against the real API model."""
+    pytest.importorskip("boto3")
+    from botocore.stub import ANY, Stubber
+
+    for name, value in {
+        "AWS_ACCESS_KEY_ID": "test",
+        "AWS_SECRET_ACCESS_KEY": "test",
+        "AWS_EC2_METADATA_DISABLED": "true",
+    }.items():
+        monkeypatch.setenv(name, value)
+    notifier = SesNotifier("privacy@example.in", region="ap-south-1", configuration_set="dpdp", track_delivery=True)
+    with Stubber(notifier.client) as ses:  # client built lazily from boto3
+        expected = {
+            "FromEmailAddress": "privacy@example.in",
+            "Destination": {"ToAddresses": ["asha@example.in"]},
+            "Content": {
+                "Simple": {
+                    "Subject": {"Data": "विषय", "Charset": "UTF-8"},
+                    "Body": {"Text": {"Data": "नमस्ते", "Charset": "UTF-8"}},
+                }
+            },
+            "EmailTags": [{"Name": RECEIPT_TAG, "Value": ANY}],
+            "ConfigurationSetName": "dpdp",
+        }
+        ses.add_response("send_email", {"MessageId": "ses-1"}, expected)
+        receipt = notifier.send(email())
+        ses.assert_no_pending_responses()
+    assert receipt.status is DeliveryStatus.QUEUED and receipt.provider_ref == "ses-1"
+
+    kit = make_kit()
+    kit.repository.save_delivery(receipt.model_copy(update={"tenant_id": kit.tenant_id}))
+    queue = "https://sqs.ap-south-1.amazonaws.com/123456789012/dpdp-ses"
+    import boto3
+
+    sqs = boto3.client("sqs", region_name="ap-south-1")
+    body = json.dumps(sns(ses_event("Delivery", receipt.id)))
+    with Stubber(sqs) as stub:
+        stub.add_response(
+            "receive_message",
+            {"Messages": [{"Body": body, "ReceiptHandle": "h0"}]},
+            {"QueueUrl": queue, "MaxNumberOfMessages": 10, "WaitTimeSeconds": 0},
+        )
+        stub.add_response("delete_message", {}, {"QueueUrl": queue, "ReceiptHandle": "h0"})
+        stub.add_response("receive_message", {}, {"QueueUrl": queue, "MaxNumberOfMessages": 10, "WaitTimeSeconds": 0})
+        assert poll_ses_events(kit, queue, client=sqs) == 1
+        stub.assert_no_pending_responses()
+    stored = kit.repository.get_delivery(kit.tenant_id, receipt.id)
+    assert stored is not None and stored.status is DeliveryStatus.DELIVERED

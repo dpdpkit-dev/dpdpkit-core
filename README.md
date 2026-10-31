@@ -51,6 +51,7 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 | `dpdpkit.retention` | Erasure schedules, pre-erasure warnings, legal holds, `needs_attention`, processor fan-out |
 | `dpdpkit.events` | In-process event bus and HMAC-signed webhooks |
 | `dpdpkit.notify` | Notifier protocol with delivery receipts; memory, console and SMTP transports |
+| `dpdpkit.ses` | Amazon SES email transport (`dpdpkit-core[ses]`); optional tracked delivery from SES events via SQS |
 | `dpdpkit.export` | Principal export (JSON, HTML) and evidence packs (CSV + PDF zip) |
 
 ## Fail-safe rules
