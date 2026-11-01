@@ -16,6 +16,7 @@ from .errors import (
     ConfigError,
     ConsentRequired,
     DpdpkitError,
+    GuardianRequired,
     InvalidTransition,
     LedgerTampered,
     NotFound,
@@ -23,15 +24,28 @@ from .errors import (
     PolicyError,
     ValidationFailed,
 )
+from .guardians import (
+    CallbackVerifier,
+    GuardianService,
+    GuardianVerifier,
+    ManualVerifier,
+    VerifierRequest,
+    VerifierResult,
+)
 from .incidents import IncidentService
 from .kit import ContactResolver, Kit
 from .ledger import FileRootSink, RootSink
 from .models import (
+    AgeAssertion,
     ClockState,
     ConsentStatus,
     Contact,
     DataItem,
     DeliveryStatus,
+    GuardianBasis,
+    GuardianRelationship,
+    GuardianStatus,
+    GuardianVerification,
     Incident,
     IncidentClock,
     IncidentReport,
@@ -49,13 +63,16 @@ from .models import (
     RetentionTrigger,
     Role,
     ScheduleStatus,
+    VerificationStatus,
 )
 from .notify import ConsoleNotifier, MemoryNotifier, Notifier, NullNotifier, SmtpNotifier
 from .policy import Policy
 from .registry import Registry
-from .repository import IncidentRepository, InMemoryRepository, Repository
+from .repository import GuardianRepository, IncidentRepository, InMemoryRepository, Repository
 
 __all__ = [
+    "AgeAssertion",
+    "CallbackVerifier",
     "ClockState",
     "ConfigError",
     "ConsentRequired",
@@ -68,6 +85,14 @@ __all__ = [
     "DpdpkitDeprecationWarning",
     "DpdpkitError",
     "FileRootSink",
+    "GuardianBasis",
+    "GuardianRelationship",
+    "GuardianRepository",
+    "GuardianRequired",
+    "GuardianService",
+    "GuardianStatus",
+    "GuardianVerification",
+    "GuardianVerifier",
     "InMemoryRepository",
     "Incident",
     "IncidentClock",
@@ -80,6 +105,7 @@ __all__ = [
     "Kit",
     "LedgerTampered",
     "LegalBasis",
+    "ManualVerifier",
     "MemoryNotifier",
     "NotFound",
     "NoticeInvalid",
@@ -103,6 +129,9 @@ __all__ = [
     "ScheduleStatus",
     "SmtpNotifier",
     "ValidationFailed",
+    "VerificationStatus",
+    "VerifierRequest",
+    "VerifierResult",
     "__version__",
     "kit_from_config",
     "load_config",

@@ -503,3 +503,65 @@ class IncidentReport(_Model):
     """Fields the incident record does not hold yet; each appears as a TO COMPLETE marker in ``body``."""
     generated_at: dt.datetime
     draft: Literal[True] = True
+
+
+# --------------------------------------------------------------------------- guardians
+
+
+class GuardianBasis(str, Enum):
+    """Why a principal needs a guardian: under the age of majority (s.9), or a person with a disability (Rule 11)."""
+
+    AGE = "age"
+    DISABILITY = "disability"
+
+
+class GuardianRelationship(str, Enum):
+    PARENT = "parent"
+    LAWFUL_GUARDIAN = "lawful_guardian"
+
+
+class GuardianStatus(str, Enum):
+    """Where a principal stands. Anything other than ``ADULT`` and ``VERIFIED`` means no consent may be taken."""
+
+    UNKNOWN_AGE = "unknown_age"
+    ADULT = "adult"
+    GUARDIAN_REQUIRED = "guardian_required"
+    PENDING = "pending"
+    VERIFIED = "verified"
+
+
+class VerificationStatus(str, Enum):
+    PENDING = "pending"
+    VERIFIED = "verified"
+    FAILED = "failed"
+    REVOKED = "revoked"
+
+
+class AgeAssertion(TenantModel):
+    """The outcome of an age gate. The date of birth is used to compute it and is not kept."""
+
+    id: str
+    principal: str
+    needs_guardian: bool
+    basis: GuardianBasis | None = None
+    method: str
+    age_of_majority: int
+    asserted_by: str
+    asserted_at: dt.datetime
+
+
+class GuardianVerification(TenantModel):
+    id: str
+    principal: str
+    guardian_ref: str
+    """Opaque id of the parent or guardian in the host application; no contact details are kept here."""
+    relationship: GuardianRelationship
+    verifier: str
+    status: VerificationStatus = VerificationStatus.PENDING
+    reference: str | None = None
+    """What the verifier gave back (a token, a case number); evidence stays with the verifier."""
+    error: str | None = None
+    created_by: str = "system"
+    created_at: dt.datetime
+    verified_at: dt.datetime | None = None
+    revoked_at: dt.datetime | None = None

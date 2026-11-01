@@ -5,6 +5,11 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- `kit.guardians` (`dpdpkit.guardians`): age gate (birth date or age in, only the outcome kept), pluggable
+  `GuardianVerifier`s (built-in `manual`, `CallbackVerifier` for your own checks) that fail closed, guardian
+  verification records, `grant_consent` that refuses children without a verified guardian (`GuardianRequired`),
+  `tracking_allowed` for the s.9(3) bar, and a disability-guardian flag (Rule 11). Unknown age counts as a child.
+  Repositories need the new `GuardianRepository` methods.
 - `kit.incidents` (`dpdpkit.incidents`): breach register, Board (initial, 72-hour detailed) and optional CERT-In
   clocks counted from awareness, report drafts that flag missing facts (never submitted anywhere), and idempotent
   bulk principal notices with per-principal outcomes. Repositories need the new `IncidentRepository` methods.

@@ -14,6 +14,7 @@ from .consent import ConsentService
 from .errors import ConfigError, PolicyError
 from .events import EventBus, WebhookDispatcher
 from .export import ExportService
+from .guardians import GuardianService
 from .incidents import IncidentService
 from .ledger import Ledger
 from .models import DEFAULT_TENANT, Contact
@@ -98,6 +99,7 @@ class Kit:
         self.retention = RetentionService(self)
         self.export = ExportService(self)
         self.incidents = IncidentService(self)
+        self.guardians = GuardianService(self)
 
     def now(self) -> dt.datetime:
         return as_utc(self._clock())
@@ -109,6 +111,7 @@ class Kit:
         other._bind()
         other.retention._handlers = self.retention._handlers
         other.export._collectors = self.export._collectors
+        other.guardians._verifiers = self.guardians._verifiers
         return other
 
     def __repr__(self) -> str:

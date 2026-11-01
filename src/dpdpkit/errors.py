@@ -74,3 +74,14 @@ class LedgerTampered(DpdpkitError):
         self.chain = chain
         self.reason = reason
         self.details = {"row_id": row_id, "chain": chain, "reason": reason}
+
+
+class GuardianRequired(DpdpkitError):
+    """The principal is a child (or age is unknown) and no verified parent or guardian has agreed."""
+
+    code = "guardian_required"
+    http_status = 403
+
+    def __init__(self, principal_status: str, **details: Any) -> None:
+        super().__init__(f"verifiable guardian consent is required (status: {principal_status})", **details)
+        self.principal_status = principal_status

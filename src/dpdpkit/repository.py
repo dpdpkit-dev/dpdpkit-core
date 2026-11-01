@@ -21,10 +21,12 @@ from typing import Protocol, TypeVar, runtime_checkable
 from .errors import SequenceConflict
 from .models import (
     ACTIVE_SCHEDULE_STATUSES,
+    AgeAssertion,
     AuditEntry,
     ConsentEvent,
     DeliveryReceipt,
     ErasureSchedule,
+    GuardianVerification,
     Incident,
     IncidentStatus,
     LegalHold,
@@ -108,6 +110,21 @@ class IncidentRepository(Protocol):
     def list_principal_notices(self, tenant_id: str, incident_id: str) -> list[PrincipalNotice]: ...
 
 
+@runtime_checkable
+class GuardianRepository(Protocol):
+    """Storage for :mod:`dpdpkit.guardians`. Kept apart from :class:`Repository` so adapters written before
+    the guardians module keep working; ``kit.guardians`` raises ``ConfigError`` if the repository lacks these."""
+
+    def save_age_assertion(self, assertion: AgeAssertion) -> None:
+        """Keep the latest assertion per principal (earlier ones live on in the audit trail)."""
+        ...
+
+    def latest_age_assertion(self, tenant_id: str, principal: str) -> AgeAssertion | None: ...
+    def save_guardian_verification(self, verification: GuardianVerification) -> None: ...
+    def get_guardian_verification(self, tenant_id: str, verification_id: str) -> GuardianVerification | None: ...
+    def list_guardian_verifications(self, tenant_id: str, principal: str) -> list[GuardianVerification]: ...
+
+
 M = TypeVar("M", ConsentEvent, AuditEntry)
 
 
@@ -127,6 +144,8 @@ class InMemoryRepository:
         self.deliveries: dict[str, DeliveryReceipt] = {}
         self.incidents: dict[str, Incident] = {}
         self.principal_notices: dict[str, PrincipalNotice] = {}
+        self.age_assertions: dict[tuple[str, str], AgeAssertion] = {}
+        self.guardian_verifications: dict[str, GuardianVerification] = {}
 
     @contextlib.contextmanager
     def transaction(self) -> Iterator[None]:
@@ -337,3 +356,27 @@ class InMemoryRepository:
             if n.tenant_id == tenant_id and n.incident_id == incident_id
         ]
         return sorted(rows, key=lambda n: (n.created_at, n.id))
+
+    # ------------------------------------------------------------------ guardians
+
+    def save_age_assertion(self, assertion: AgeAssertion) -> None:
+        self.age_assertions[(assertion.tenant_id, assertion.principal)] = assertion.model_copy(deep=True)
+
+    def latest_age_assertion(self, tenant_id: str, principal: str) -> AgeAssertion | None:
+        a = self.age_assertions.get((tenant_id, principal))
+        return a.model_copy(deep=True) if a else None
+
+    def save_guardian_verification(self, verification: GuardianVerification) -> None:
+        self.guardian_verifications[f"{verification.tenant_id}:{verification.id}"] = verification.model_copy(deep=True)
+
+    def get_guardian_verification(self, tenant_id: str, verification_id: str) -> GuardianVerification | None:
+        v = self.guardian_verifications.get(f"{tenant_id}:{verification_id}")
+        return v.model_copy(deep=True) if v else None
+
+    def list_guardian_verifications(self, tenant_id: str, principal: str) -> list[GuardianVerification]:
+        rows = [
+            v.model_copy(deep=True)
+            for v in self.guardian_verifications.values()
+            if v.tenant_id == tenant_id and v.principal == principal
+        ]
+        return sorted(rows, key=lambda v: (v.created_at, v.id))
