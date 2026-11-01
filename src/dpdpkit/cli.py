@@ -291,6 +291,12 @@ def _cmd_notice(args: argparse.Namespace) -> int:
     return 1 if failed and args.strict else 0
 
 
+def _cmd_lint(args: argparse.Namespace) -> int:
+    from .lint import run_lint
+
+    return run_lint(args.configs or ["dpdpkit.yaml"], strict=args.strict, fmt=args.format)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dpdpkit", description="dpdpkit command line")
     parser.add_argument("--version", action="version", version=f"dpdpkit-core {_version()}")
@@ -348,6 +354,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--prepared-by", help="review: name shown as the preparer")
     p.add_argument("--strict", action="store_true", help="exit 1 on failed checks (check: on warnings too)")
     p.set_defaults(func=_cmd_notice)
+
+    p = sub.add_parser("lint", help="CI check: fail when the notice or a retention rule is missing")
+    p.add_argument("configs", nargs="*", help="dpdpkit.yaml files (default: ./dpdpkit.yaml)")
+    p.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
+    p.add_argument("--format", choices=["text", "github"], default="text", help="github: workflow annotations")
+    p.set_defaults(func=_cmd_lint)
 
     p = sub.add_parser("workbook", help="data-mapping workbook: new, import to dpdpkit.yaml, scan report")
     p.add_argument("workbook_command", choices=["new", "import", "report"])

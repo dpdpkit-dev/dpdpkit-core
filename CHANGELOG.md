@@ -5,6 +5,9 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- `dpdpkit lint [CONFIG...]` (also the `dpdp-lint` command): static CI check that fails when a purpose has no
+  retention rule or the notice is missing or fails the automated notice checks. `--strict` fails on warnings,
+  `--format github` emits workflow annotations. Used by the `dpdp-lint` GitHub Action.
 - Notice review packs (`dpdpkit.review`): `dpdpkit notice review [CONFIG | --template ID]` renders the notice in
   every locale with automated checks (required links, itemised data and purposes, untranslated text, contact,
   placeholders), questions for counsel and a sign-off table listing each locale's content hash, the same hash the

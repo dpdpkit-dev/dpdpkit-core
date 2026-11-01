@@ -216,3 +216,30 @@ def test_cli_init_reports_template_review_status(tmp_path: Path, capsys: pytest.
     assert capsys.readouterr().out.count("[notice wording awaiting lawyer review]") == len(TEMPLATE_IDS)
     assert main(["init", "--dir", str(tmp_path), "--template", "saas"]) == 0
     assert "note: notice wording awaiting lawyer review" in capsys.readouterr().out
+
+
+def test_cli_lint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    from dpdpkit.lint import main as lint_main
+
+    monkeypatch.chdir(tmp_path)
+    assert main(["init"]) == 0
+    capsys.readouterr()
+    assert main(["lint"]) == 0
+    assert "PASS  retention" in capsys.readouterr().out
+    assert main(["lint", "--strict"]) == 1  # the starter config still has placeholders
+    capsys.readouterr()
+
+    config = yaml.safe_load(STARTER_CONFIG)
+    del config["purposes"][1]["retention"]
+    del config["notice"]
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(yaml.safe_dump(config, allow_unicode=True), encoding="utf-8")
+    assert main(["lint", str(bad)]) == 1
+    captured = capsys.readouterr()
+    assert "FAIL  retention" in captured.out and "marketing" in captured.out
+    assert "FAIL  notice " in captured.out and "dpdp-lint: failed" in captured.err
+    assert main(["lint", str(bad), "--format", "github"]) == 1
+    assert "::error file=" in capsys.readouterr().out
+    assert main(["lint", str(tmp_path / "missing.yaml")]) == 1
+    assert "FAIL  config" in capsys.readouterr().out
+    assert lint_main(["dpdpkit.yaml"]) == 0
