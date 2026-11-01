@@ -5,6 +5,9 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- `kit.incidents` (`dpdpkit.incidents`): breach register, Board (initial, 72-hour detailed) and optional CERT-In
+  clocks counted from awareness, report drafts that flag missing facts (never submitted anywhere), and idempotent
+  bulk principal notices with per-principal outcomes. Repositories need the new `IncidentRepository` methods.
 - `dpdpkit lint [CONFIG...]` (also the `dpdp-lint` command): static CI check that fails when a purpose has no
   retention rule or the notice is missing or fails the automated notice checks. `--strict` fails on warnings,
   `--format github` emits workflow annotations. Used by the `dpdp-lint` GitHub Action.

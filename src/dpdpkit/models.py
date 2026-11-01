@@ -406,3 +406,100 @@ class DeliveryReceipt(TenantModel):
     error: str | None = None
     created_at: dt.datetime
     delivered_at: dt.datetime | None = None
+
+
+# --------------------------------------------------------------------------- incidents
+
+
+class IncidentSeverity(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IncidentStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+
+
+class ReportKind(str, Enum):
+    BOARD_INITIAL = "board_initial"
+    BOARD_DETAILED = "board_detailed"
+    CERT_IN = "cert_in"
+
+
+class ClockState(str, Enum):
+    PENDING = "pending"
+    DONE = "done"
+    OVERDUE = "overdue"
+
+
+class NoticeStatus(str, Enum):
+    SENT = "sent"
+    QUEUED = "queued"
+    FAILED = "failed"
+    NO_CONTACT = "no_contact"
+
+
+class Incident(TenantModel):
+    id: str
+    title: str
+    description: str = ""
+    severity: IncidentSeverity = IncidentSeverity.MEDIUM
+    detected_at: dt.datetime
+    aware_at: dt.datetime
+    """When the fiduciary became aware of the breach. Every deadline counts from here."""
+    affected_count: int | None = None
+    data_items: list[str] = Field(default_factory=list)
+    root_cause: str = ""
+    remediation: str = ""
+    likely_consequences: str = ""
+    safety_steps: str = ""
+    """What affected principals can do to protect themselves; goes into their notice."""
+    status: IncidentStatus = IncidentStatus.OPEN
+    board_initial_sent_at: dt.datetime | None = None
+    board_detailed_sent_at: dt.datetime | None = None
+    certin_reported_at: dt.datetime | None = None
+    report_references: dict[str, str] = Field(default_factory=dict)
+    """Reference numbers the authorities gave back, keyed by :class:`ReportKind` value."""
+    principal_notice_job: str | None = None
+    created_by: str = "system"
+    created_at: dt.datetime
+    updated_at: dt.datetime
+    closed_at: dt.datetime | None = None
+
+
+class IncidentClock(_Model):
+    kind: ReportKind
+    due_at: dt.datetime | None
+    """``None`` when the rule says "without delay" and sets no number of hours."""
+    done_at: dt.datetime | None
+    state: ClockState
+    remaining: dt.timedelta | None = None
+    """Time left (negative when overdue); ``None`` when there is no fixed deadline or it is done."""
+
+
+class PrincipalNotice(TenantModel):
+    id: str
+    incident_id: str
+    job_id: str
+    principal: str
+    status: NoticeStatus
+    channel: Channel | None = None
+    receipt_id: str | None = None
+    error: str | None = None
+    created_at: dt.datetime
+
+
+class IncidentReport(_Model):
+    """A draft for a person to review and submit. dpdpkit never sends it to an authority."""
+
+    incident_id: str
+    kind: ReportKind
+    title: str
+    body: str
+    missing: list[str] = Field(default_factory=list)
+    """Fields the incident record does not hold yet; each appears as a TO COMPLETE marker in ``body``."""
+    generated_at: dt.datetime
+    draft: Literal[True] = True

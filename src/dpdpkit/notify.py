@@ -25,6 +25,17 @@ TEMPLATES: dict[str, dict[str, tuple[str, str]]] = {
             "If you want to keep your account, log in or contact us before then: {contact}.\n"
             "You can also exercise your rights at {rights_url}.",
         ),
+        "breach_notice": (
+            "A personal data breach at {fiduciary}",
+            "We are writing to tell you about a personal data breach that may affect you.\n\n"
+            "What happened: {description}\n"
+            "Data involved: {data_items}\n"
+            "When we became aware: {aware_at}\n"
+            "Likely consequences for you: {consequences}\n"
+            "What we have done: {mitigation}\n"
+            "What you can do to protect yourself: {safety_steps}\n\n"
+            "Questions: {contact}. You may also complain to the Data Protection Board of India.",
+        ),
         "request_opened": (
             "We received your {kind} request",
             "Reference {request_id}. We aim to respond by {due_at}. Contact: {contact}.",

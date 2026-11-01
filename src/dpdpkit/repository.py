@@ -25,9 +25,12 @@ from .models import (
     ConsentEvent,
     DeliveryReceipt,
     ErasureSchedule,
+    Incident,
+    IncidentStatus,
     LegalHold,
     Nominee,
     Notice,
+    PrincipalNotice,
     RequestStatus,
     RightsRequest,
     ScheduleStatus,
@@ -93,6 +96,18 @@ class Repository(Protocol):
     def get_delivery(self, tenant_id: str, receipt_id: str) -> DeliveryReceipt | None: ...
 
 
+@runtime_checkable
+class IncidentRepository(Protocol):
+    """Storage for :mod:`dpdpkit.incidents`. Kept apart from :class:`Repository` so adapters written before
+    the incidents module keep working; ``kit.incidents`` raises ``ConfigError`` if the repository lacks these."""
+
+    def save_incident(self, incident: Incident) -> None: ...
+    def get_incident(self, tenant_id: str, incident_id: str) -> Incident | None: ...
+    def list_incidents(self, tenant_id: str, *, status: IncidentStatus | None = None) -> list[Incident]: ...
+    def save_principal_notice(self, notice: PrincipalNotice) -> None: ...
+    def list_principal_notices(self, tenant_id: str, incident_id: str) -> list[PrincipalNotice]: ...
+
+
 M = TypeVar("M", ConsentEvent, AuditEntry)
 
 
@@ -110,6 +125,8 @@ class InMemoryRepository:
         self.holds: dict[str, LegalHold] = {}
         self.activity: dict[tuple[str, str], dt.datetime] = {}
         self.deliveries: dict[str, DeliveryReceipt] = {}
+        self.incidents: dict[str, Incident] = {}
+        self.principal_notices: dict[str, PrincipalNotice] = {}
 
     @contextlib.contextmanager
     def transaction(self) -> Iterator[None]:
@@ -292,3 +309,31 @@ class InMemoryRepository:
     def get_delivery(self, tenant_id: str, receipt_id: str) -> DeliveryReceipt | None:
         d = self.deliveries.get(f"{tenant_id}:{receipt_id}")
         return d.model_copy(deep=True) if d else None
+
+    # ------------------------------------------------------------------ incidents
+
+    def save_incident(self, incident: Incident) -> None:
+        self.incidents[f"{incident.tenant_id}:{incident.id}"] = incident.model_copy(deep=True)
+
+    def get_incident(self, tenant_id: str, incident_id: str) -> Incident | None:
+        i = self.incidents.get(f"{tenant_id}:{incident_id}")
+        return i.model_copy(deep=True) if i else None
+
+    def list_incidents(self, tenant_id: str, *, status: IncidentStatus | None = None) -> list[Incident]:
+        rows = [
+            i.model_copy(deep=True)
+            for i in self.incidents.values()
+            if i.tenant_id == tenant_id and (status is None or i.status is status)
+        ]
+        return sorted(rows, key=lambda i: (i.aware_at, i.id))
+
+    def save_principal_notice(self, notice: PrincipalNotice) -> None:
+        self.principal_notices[f"{notice.tenant_id}:{notice.id}"] = notice.model_copy(deep=True)
+
+    def list_principal_notices(self, tenant_id: str, incident_id: str) -> list[PrincipalNotice]:
+        rows = [
+            n.model_copy(deep=True)
+            for n in self.principal_notices.values()
+            if n.tenant_id == tenant_id and n.incident_id == incident_id
+        ]
+        return sorted(rows, key=lambda n: (n.created_at, n.id))

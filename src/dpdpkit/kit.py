@@ -14,6 +14,7 @@ from .consent import ConsentService
 from .errors import ConfigError, PolicyError
 from .events import EventBus, WebhookDispatcher
 from .export import ExportService
+from .incidents import IncidentService
 from .ledger import Ledger
 from .models import DEFAULT_TENANT, Contact
 from .notices import NoticeService
@@ -96,6 +97,7 @@ class Kit:
         self.rights = RightsService(self)
         self.retention = RetentionService(self)
         self.export = ExportService(self)
+        self.incidents = IncidentService(self)
 
     def now(self) -> dt.datetime:
         return as_utc(self._clock())

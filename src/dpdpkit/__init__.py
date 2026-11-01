@@ -23,15 +23,26 @@ from .errors import (
     PolicyError,
     ValidationFailed,
 )
+from .incidents import IncidentService
 from .kit import ContactResolver, Kit
 from .ledger import FileRootSink, RootSink
 from .models import (
+    ClockState,
     ConsentStatus,
     Contact,
     DataItem,
+    DeliveryStatus,
+    Incident,
+    IncidentClock,
+    IncidentReport,
+    IncidentSeverity,
+    IncidentStatus,
     LegalBasis,
+    NoticeStatus,
+    PrincipalNotice,
     Processor,
     Purpose,
+    ReportKind,
     RequestKind,
     RequestStatus,
     RetentionRule,
@@ -42,9 +53,10 @@ from .models import (
 from .notify import ConsoleNotifier, MemoryNotifier, Notifier, NullNotifier, SmtpNotifier
 from .policy import Policy
 from .registry import Registry
-from .repository import InMemoryRepository, Repository
+from .repository import IncidentRepository, InMemoryRepository, Repository
 
 __all__ = [
+    "ClockState",
     "ConfigError",
     "ConsentRequired",
     "ConsentStatus",
@@ -52,10 +64,18 @@ __all__ = [
     "Contact",
     "ContactResolver",
     "DataItem",
+    "DeliveryStatus",
     "DpdpkitDeprecationWarning",
     "DpdpkitError",
     "FileRootSink",
     "InMemoryRepository",
+    "Incident",
+    "IncidentClock",
+    "IncidentReport",
+    "IncidentRepository",
+    "IncidentService",
+    "IncidentSeverity",
+    "IncidentStatus",
     "InvalidTransition",
     "Kit",
     "LedgerTampered",
@@ -63,13 +83,16 @@ __all__ = [
     "MemoryNotifier",
     "NotFound",
     "NoticeInvalid",
+    "NoticeStatus",
     "Notifier",
     "NullNotifier",
     "Policy",
     "PolicyError",
+    "PrincipalNotice",
     "Processor",
     "Purpose",
     "Registry",
+    "ReportKind",
     "Repository",
     "RequestKind",
     "RequestStatus",
