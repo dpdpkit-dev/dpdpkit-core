@@ -25,6 +25,7 @@ from .registry import Registry
 from .repository import Repository
 from .retention import RetentionService
 from .rights import IdentityVerifier, RightsService
+from .transfers import TransferService
 
 ContactResolver = Callable[[str], Contact | None]
 """Maps a principal reference to contact details for notifications. Core never stores them."""
@@ -100,6 +101,7 @@ class Kit:
         self.export = ExportService(self)
         self.incidents = IncidentService(self)
         self.guardians = GuardianService(self)
+        self.transfers = TransferService(self)
 
     def now(self) -> dt.datetime:
         return as_utc(self._clock())
@@ -112,6 +114,7 @@ class Kit:
         other.retention._handlers = self.retention._handlers
         other.export._collectors = self.export._collectors
         other.guardians._verifiers = self.guardians._verifiers
+        other.transfers._restricted = self.transfers._restricted
         return other
 
     def __repr__(self) -> str:

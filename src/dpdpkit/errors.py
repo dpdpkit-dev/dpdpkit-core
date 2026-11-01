@@ -85,3 +85,14 @@ class GuardianRequired(DpdpkitError):
     def __init__(self, principal_status: str, **details: Any) -> None:
         super().__init__(f"verifiable guardian consent is required (status: {principal_status})", **details)
         self.principal_status = principal_status
+
+
+class TransferRestricted(DpdpkitError):
+    """The destination country is on the restricted list (s.16: transfers barred by notification)."""
+
+    code = "transfer_restricted"
+    http_status = 403
+
+    def __init__(self, country: str, **details: Any) -> None:
+        super().__init__(f"transfer of personal data to {country} is restricted", country=country, **details)
+        self.country = country

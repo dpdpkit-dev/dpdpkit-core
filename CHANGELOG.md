@@ -5,6 +5,12 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- `kit.transfers` (`dpdpkit.transfers`): transfer register for data sent abroad (s.16, Rule 15) tied to registry
+  processors (`country`) and data stores (`region`), a restricted-country denylist (policy key
+  `transfers.restricted_countries` plus `set_restricted_countries`; empty by default), `check` / `record` that refuse
+  a restricted destination (`TransferRestricted`), `violations` for active transfers to a newly restricted country,
+  and `review` listing foreign registry entries that are restricted or unregistered. Repositories need the new
+  `TransferRepository` methods.
 - `kit.guardians` (`dpdpkit.guardians`): age gate (birth date or age in, only the outcome kept), pluggable
   `GuardianVerifier`s (built-in `manual`, `CallbackVerifier` for your own checks) that fail closed, guardian
   verification records, `grant_consent` that refuses children without a verified guardian (`GuardianRequired`),

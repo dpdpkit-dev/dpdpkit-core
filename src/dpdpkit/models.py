@@ -565,3 +565,26 @@ class GuardianVerification(TenantModel):
     created_at: dt.datetime
     verified_at: dt.datetime | None = None
     revoked_at: dt.datetime | None = None
+
+
+class TransferRecord(TenantModel):
+    """One registered transfer of personal data outside India (DPDP Act s.16; Rules 2025, Rule 15)."""
+
+    id: str
+    destination: str
+    """ISO 3166-1 alpha-2 code of the receiving country."""
+    processor_id: str | None = None
+    data_store_id: str | None = None
+    purposes: list[str] = Field(default_factory=list)
+    data_items: list[str] = Field(default_factory=list)
+    safeguards: str = ""
+    """How the data is protected abroad (contract clause, encryption, access limits). Free text for the register."""
+    created_by: str = "system"
+    created_at: dt.datetime
+    ended_by: str | None = None
+    ended_at: dt.datetime | None = None
+    end_reason: str | None = None
+
+    @property
+    def active(self) -> bool:
+        return self.ended_at is None

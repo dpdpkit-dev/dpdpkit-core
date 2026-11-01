@@ -36,6 +36,7 @@ from .models import (
     RequestStatus,
     RightsRequest,
     ScheduleStatus,
+    TransferRecord,
 )
 
 
@@ -125,6 +126,16 @@ class GuardianRepository(Protocol):
     def list_guardian_verifications(self, tenant_id: str, principal: str) -> list[GuardianVerification]: ...
 
 
+@runtime_checkable
+class TransferRepository(Protocol):
+    """Storage for :mod:`dpdpkit.transfers`. Kept apart from :class:`Repository` so adapters written before
+    the transfers module keep working; ``kit.transfers`` raises ``ConfigError`` if the repository lacks these."""
+
+    def save_transfer(self, transfer: TransferRecord) -> None: ...
+    def get_transfer(self, tenant_id: str, transfer_id: str) -> TransferRecord | None: ...
+    def list_transfers(self, tenant_id: str, *, active_only: bool = False) -> list[TransferRecord]: ...
+
+
 M = TypeVar("M", ConsentEvent, AuditEntry)
 
 
@@ -146,6 +157,7 @@ class InMemoryRepository:
         self.principal_notices: dict[str, PrincipalNotice] = {}
         self.age_assertions: dict[tuple[str, str], AgeAssertion] = {}
         self.guardian_verifications: dict[str, GuardianVerification] = {}
+        self.transfers: dict[str, TransferRecord] = {}
 
     @contextlib.contextmanager
     def transaction(self) -> Iterator[None]:
@@ -380,3 +392,20 @@ class InMemoryRepository:
             if v.tenant_id == tenant_id and v.principal == principal
         ]
         return sorted(rows, key=lambda v: (v.created_at, v.id))
+
+    # ------------------------------------------------------------------ transfers
+
+    def save_transfer(self, transfer: TransferRecord) -> None:
+        self.transfers[f"{transfer.tenant_id}:{transfer.id}"] = transfer.model_copy(deep=True)
+
+    def get_transfer(self, tenant_id: str, transfer_id: str) -> TransferRecord | None:
+        t = self.transfers.get(f"{tenant_id}:{transfer_id}")
+        return t.model_copy(deep=True) if t else None
+
+    def list_transfers(self, tenant_id: str, *, active_only: bool = False) -> list[TransferRecord]:
+        rows = [
+            t.model_copy(deep=True)
+            for t in self.transfers.values()
+            if t.tenant_id == tenant_id and (not active_only or t.active)
+        ]
+        return sorted(rows, key=lambda t: (t.created_at, t.id))
