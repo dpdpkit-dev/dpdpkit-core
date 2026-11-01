@@ -31,10 +31,13 @@ class NoticeService:
         links: Mapping[str, str],
         body: str = "",
         purposes: Mapping[str, Mapping[str, str]] | None = None,
+        data_items: Mapping[str, str] | None = None,
     ) -> NoticeContent:
-        """Itemise every registered purpose. ``purposes`` overrides title/description per purpose
-        (for translations); data item names come from the registry."""
+        """Itemise every registered purpose. For translations, ``purposes`` overrides title/description per
+        purpose and ``data_items`` overrides data item names by id; anything not overridden comes from the
+        registry."""
         overrides = purposes or {}
+        item_names = data_items or {}
         items: list[NoticePurpose] = []
         for purpose in self._kit.registry.purposes():
             text = overrides.get(purpose.id, {})
@@ -43,7 +46,7 @@ class NoticeService:
                     id=purpose.id,
                     title=text.get("title", purpose.title),
                     description=text.get("description", purpose.description),
-                    data_items=[self._kit.registry.data_item(i).name for i in purpose.data_items],
+                    data_items=[item_names.get(i) or self._kit.registry.data_item(i).name for i in purpose.data_items],
                     legal_basis=purpose.legal_basis,
                     required=purpose.required,
                 )

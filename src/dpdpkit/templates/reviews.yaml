@@ -1,0 +1,23 @@
+# Lawyer review of the notice wording shipped in each purpose template.
+#
+#   status: pending    not reviewed yet
+#   status: reviewed   approved by the reviewer named here; `hashes` are the notice content hashes (one per
+#                      locale) of the exact wording approved, copied from the review pack's sign-off table
+#
+# Generate the pack for a template with `dpdpkit notice review --template ID --out review.md`. A review covers
+# only the wording with those hashes: when a template's notice changes, the review shows as stale and the test
+# suite fails until this file is updated in the same change (a new review, or back to `status: pending`).
+#
+# Example entry once reviewed:
+#   edtech:
+#     status: reviewed
+#     reviewer: A. Advocate
+#     firm: Example Law Chambers
+#     date: 2027-01-15
+#     scope: English wording; Hindi checked against the English by a native speaker
+#     hashes: {en: <sha256>, hi: <sha256>}
+edtech: {status: pending}
+health: {status: pending}
+ecommerce: {status: pending}
+fintech: {status: pending}
+saas: {status: pending}

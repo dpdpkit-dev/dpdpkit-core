@@ -48,10 +48,14 @@ def test_template_is_a_complete_config(template_id: str) -> None:
         used_processors.update(purpose.get("processors", []))
     assert used_items == declared_items
     assert used_processors == declared_processors
-    hindi = cfg["notice"]["translations"]["hi"]["purposes"]
-    assert set(hindi) == {p["id"] for p in cfg["purposes"]}
-    # An unquoted comma in a YAML flow mapping silently splits a title into extra keys.
-    assert all(list(text) == ["title"] and isinstance(text["title"], str) for text in hindi.values())
+    hindi = cfg["notice"]["translations"]["hi"]
+    assert set(hindi["purposes"]) == {p["id"] for p in cfg["purposes"]}
+    assert set(hindi["data_items"]) == declared_items
+    # An unquoted comma in a YAML flow mapping silently splits a value into extra keys.
+    for text in hindi["purposes"].values():
+        assert set(text) == {"title", "description"}
+        assert all(isinstance(value, str) and value for value in text.values())
+    assert all(isinstance(name, str) and name for name in hindi["data_items"].values())
 
 
 @pytest.mark.parametrize("template_id", TEMPLATE_IDS)

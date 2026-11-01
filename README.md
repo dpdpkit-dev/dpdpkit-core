@@ -54,6 +54,7 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 | `dpdpkit.ses` | Amazon SES email transport (`dpdpkit-core[ses]`); optional tracked delivery from SES events via SQS |
 | `dpdpkit.export` | Principal export (JSON, HTML) and evidence packs (CSV + PDF zip) |
 | `dpdpkit.templates` | Industry purpose templates: ed-tech, health, e-commerce, fintech, SaaS |
+| `dpdpkit.review` | Notice review packs for counsel: automated Rule 3 checks, questions, sign-off bound to content hashes |
 | `dpdpkit.workbook` | Data-mapping workbook (`.xlsx`, `dpdpkit-core[workbook]`): import to `dpdpkit.yaml`, PII scan report |
 | `dpdpkit.telemetry` | Opt-in anonymous usage telemetry; off by default (see below) |
 
@@ -71,6 +72,8 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 ```bash
 dpdpkit init                                   # starter dpdpkit.yaml
 dpdpkit init --template edtech                 # industry purpose template (--list-templates)
+dpdpkit notice check                           # automated notice checks; exit 1 on a failed check
+dpdpkit notice review --out notice-review.md   # review pack for counsel (or --template edtech)
 dpdpkit workbook new --template edtech         # data-mapping workbook (needs the workbook extra)
 dpdpkit workbook import data-mapping.xlsx --base dpdpkit.yaml --out dpdpkit.yaml
 dpdpkit workbook report data-mapping.xlsx --out scan-report.md

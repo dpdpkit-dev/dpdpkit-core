@@ -5,6 +5,15 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- Notice review packs (`dpdpkit.review`): `dpdpkit notice review [CONFIG | --template ID]` renders the notice in
+  every locale with automated checks (required links, itemised data and purposes, untranslated text, contact,
+  placeholders), questions for counsel and a sign-off table listing each locale's content hash, the same hash the
+  ledger records on `notice.published`. `dpdpkit notice check` prints the checks alone and exits 1 on a failure.
+- Lawyer-review register for the purpose templates (`templates/reviews.yaml`): `PurposeTemplate.notice_review()`
+  reports `pending`, `reviewed` or `stale` (wording changed since the review); `dpdpkit init` shows the status.
+  All five templates are `pending` until the partner-lawyer review is recorded.
+- Notice translations can rename data items (`notice.translations.<locale>.data_items`), so a translated notice no
+  longer lists English data item names.
 - Data-mapping workbook and scan-report template (`dpdpkit.workbook`, optional `workbook` extra, openpyxl):
   `dpdpkit workbook new [--template ID | --from dpdpkit.yaml]` writes an `.xlsx` workbook with sheets for data
   stores, scan findings, data items, processors, purposes and a gap list of readiness checks mapped to dpdpkit
@@ -29,6 +38,8 @@ All code packages in the dpdpkit release train share one version number.
   standard wording and a two-minor-release minimum for every `@deprecated` in the source.
 
 ### Changed
+- The purpose templates and the starter config now translate every purpose description and data item name into
+  Hindi; before, the Hindi notice fell back to English for both.
 - `Ledger.check_root()` refuses a root hash from another tenant (`ValidationFailed`).
 - CI enforces at least 95% line and branch coverage on `ledger`, `retention` and `rights`.
 

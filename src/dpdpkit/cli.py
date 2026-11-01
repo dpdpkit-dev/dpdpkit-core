@@ -54,7 +54,7 @@ def load_kit(spec: str | None) -> Kit:
 def _cmd_init(args: argparse.Namespace) -> int:
     if args.list_templates:
         for template in list_templates():
-            print(f"{template.id:<10} {template.title}: {template.summary}")
+            print(f"{template.id:<10} {template.title}: {template.summary} [{template.notice_review().describe()}]")
         return 0
     text = load_template(args.template).text if args.template else STARTER_CONFIG
     target = Path(args.dir) / "dpdpkit.yaml"
@@ -64,6 +64,8 @@ def _cmd_init(args: argparse.Namespace) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text, encoding="utf-8")
     print(f"wrote {target}" + (f" from the {args.template} purpose template" if args.template else ""))
+    if args.template:
+        print(f"note: {load_template(args.template).notice_review().describe()}")
     print("next: edit purposes and notice text, then wire a repository (see your adapter's quickstart)")
     return 0
 
@@ -250,6 +252,45 @@ def _cmd_workbook(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_notice(args: argparse.Namespace) -> int:
+    from .config import load_config
+    from .review import notice_checks, notice_translations_for, review_pack
+    from .templates import _leading_comments
+
+    if args.template and args.config:
+        print("error: pass a config file or --template, not both", file=sys.stderr)
+        return 1
+    if args.template:
+        template = load_template(args.template)
+        config, notes, source = template.config(), template.notes(), f"the `{template.id}` purpose template"
+        print(template.notice_review().describe(), file=sys.stderr)
+    else:
+        path = Path(args.config or "dpdpkit.yaml")
+        config, source = load_config(path), f"`{path.name}`"
+        notes = _leading_comments(path.read_text(encoding="utf-8"))
+    kit, translations = notice_translations_for(config)
+    checks = [c for c in notice_checks(kit, translations) if c.status != "counsel"]
+    failed = [c for c in checks if c.status == "fail"]
+    if args.notice_command == "check":
+        for c in checks:
+            print(f"{c.status.upper():<5} {c.id:<18} {c.detail}")
+        return 1 if failed or (args.strict and any(c.status == "warn" for c in checks)) else 0
+    out = Path(args.out) if args.out else None
+    if out is not None and out.exists() and not args.force:
+        print(f"{out} already exists (use --force to overwrite)", file=sys.stderr)
+        return 1
+    text = review_pack(config, source=source, notes=notes, prepared_by=args.prepared_by or "")
+    if failed:
+        print(f"warning: {len(failed)} automated check(s) failed: {', '.join(c.id for c in failed)}", file=sys.stderr)
+    if out is None:
+        print(text, end="")
+    else:
+        out.write_text(text, encoding="utf-8")
+        print(f"wrote {out}")
+        print("next: send it to counsel; record their sign-off with the content hashes it lists")
+    return 1 if failed and args.strict else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dpdpkit", description="dpdpkit command line")
     parser.add_argument("--version", action="version", version=f"dpdpkit-core {_version()}")
@@ -297,6 +338,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("telemetry", help="opt in to or out of anonymous usage telemetry (off by default)")
     p.add_argument("telemetry_command", choices=["status", "enable", "disable", "show"], nargs="?", default="status")
     p.set_defaults(func=_cmd_telemetry)
+
+    p = sub.add_parser("notice", help="notice wording: review pack for counsel, or the automated checks alone")
+    p.add_argument("notice_command", choices=["review", "check"])
+    p.add_argument("config", nargs="?", help="the dpdpkit.yaml to read (default: ./dpdpkit.yaml)")
+    p.add_argument("--template", help="review a purpose template's notice instead of a config file")
+    p.add_argument("--out", help="review: write the Markdown pack here instead of printing it")
+    p.add_argument("--force", action="store_true", help="overwrite --out if it exists")
+    p.add_argument("--prepared-by", help="review: name shown as the preparer")
+    p.add_argument("--strict", action="store_true", help="exit 1 on failed checks (check: on warnings too)")
+    p.set_defaults(func=_cmd_notice)
 
     p = sub.add_parser("workbook", help="data-mapping workbook: new, import to dpdpkit.yaml, scan report")
     p.add_argument("workbook_command", choices=["new", "import", "report"])

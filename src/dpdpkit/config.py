@@ -65,9 +65,18 @@ notice:
     hi:
       title: हम आपके व्यक्तिगत डेटा का उपयोग कैसे करते हैं
       body: चुनें कि आप किस बात से सहमत हैं। आप कभी भी अपनी पसंद बदल सकते हैं।
+      data_items:
+        email: ईमेल पता
+        phone: मोबाइल नंबर
+        name: पूरा नाम
+        order_history: ऑर्डर का इतिहास
       purposes:
-        account: {title: आपका खाता बनाना और चलाना}
-        marketing: {title: आपको ऑफ़र भेजना}
+        account:
+          title: आपका खाता बनाना और चलाना
+          description: हम इन विवरणों का उपयोग आपको साइन इन कराने और सेवा देने के लिए करते हैं।
+        marketing:
+          title: आपको ऑफ़र भेजना
+          description: उत्पादों और छूट के बारे में कभी-कभार ईमेल।
 """
 
 
@@ -113,6 +122,7 @@ def notice_translations(kit: Kit, notice_cfg: Mapping[str, Any]) -> dict[str, No
             body=str(text.get("body", body)),
             links={**links, **(text.get("links") or {})},
             purposes=text.get("purposes") or {},
+            data_items={str(k): str(v) for k, v in (text.get("data_items") or {}).items()},
         )
     return out
 
