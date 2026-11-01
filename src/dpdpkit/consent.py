@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+from collections import Counter
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -14,6 +15,7 @@ from .models import (
     ConsentAction,
     ConsentEvent,
     ConsentReceipt,
+    ConsentStat,
     ConsentState,
     ConsentStatus,
     LegalBasis,
@@ -197,6 +199,31 @@ class ConsentService:
 
     def history(self, principal: str) -> list[ConsentEvent]:
         return list(self._kit.ledger.consent_events(principal=principal))
+
+    def stats(self) -> list[ConsentStat]:
+        """Grants, denials and withdrawals per purpose and notice version, with no personal data.
+
+        A withdrawal records no notice version of its own, so it counts against the version last granted.
+        """
+        counts: Counter[tuple[str, int | None, ConsentAction]] = Counter()
+        granted: dict[tuple[str, str], int | None] = {}
+        for event in self._kit.ledger.consent_events():
+            key = (event.principal, event.purpose)
+            if event.action is ConsentAction.GRANT:
+                granted[key] = event.notice_version
+            version = granted.get(key) if event.action is ConsentAction.WITHDRAW else event.notice_version
+            counts[(event.purpose, version, event.action)] += 1
+        rows = sorted({(purpose, version) for purpose, version, _ in counts}, key=lambda r: (r[0], r[1] or 0))
+        return [
+            ConsentStat(
+                purpose=purpose,
+                notice_version=version,
+                grants=counts[(purpose, version, ConsentAction.GRANT)],
+                denials=counts[(purpose, version, ConsentAction.DENY)],
+                withdrawals=counts[(purpose, version, ConsentAction.WITHDRAW)],
+            )
+            for purpose, version in rows
+        ]
 
     # ------------------------------------------------------------------ receipts
 

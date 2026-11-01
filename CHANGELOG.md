@@ -5,6 +5,8 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- `kit.consent.stats()`: grants, denials and withdrawals per purpose and notice version, with no personal data, for
+  the admin dashboard. A withdrawal counts against the notice version last granted.
 - `kit.transfers` (`dpdpkit.transfers`): transfer register for data sent abroad (s.16, Rule 15) tied to registry
   processors (`country`) and data stores (`region`), a restricted-country denylist (policy key
   `transfers.restricted_countries` plus `set_restricted_countries`; empty by default), `check` / `record` that refuse

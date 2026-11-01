@@ -16,7 +16,30 @@ from dpdpkit import (
 )
 from dpdpkit.errors import SequenceConflict
 from dpdpkit.ledger import GENESIS, row_hash
-from dpdpkit.models import ConsentAction, ConsentEvent, ScheduleStatus
+from dpdpkit.models import ConsentAction, ConsentEvent, ConsentStat, ScheduleStatus
+
+
+def test_stats_count_withdrawals_against_the_version_granted(kit: Kit) -> None:
+    assert kit.consent.stats() == []
+    kit.consent.grant("u1", "marketing")
+    kit.consent.grant("u2", "marketing")
+    kit.consent.deny("u3", "marketing")
+    kit.consent.withdraw("u1", "marketing")
+    kit.ledger.append_consent(
+        principal="u4",
+        purpose="marketing",
+        action=ConsentAction.GRANT,
+        notice_version=2,
+        notice_hash=None,
+        locale=None,
+        source="api",
+        metadata=None,
+    )
+    kit.consent.withdraw("u4", "marketing")
+    assert kit.consent.stats() == [
+        ConsentStat(purpose="marketing", notice_version=1, grants=2, denials=1, withdrawals=1),
+        ConsentStat(purpose="marketing", notice_version=2, grants=1, denials=0, withdrawals=1),
+    ]
 
 
 def test_grant_check_withdraw(kit: Kit) -> None:

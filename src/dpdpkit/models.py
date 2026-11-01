@@ -247,6 +247,14 @@ class ConsentReceipt(TenantModel):
     signature: str
 
 
+class ConsentStat(_Model):
+    purpose: str
+    notice_version: int | None = None
+    grants: int = 0
+    denials: int = 0
+    withdrawals: int = 0
+
+
 class LedgerVerification(TenantModel):
     ok: bool
     checked: int
