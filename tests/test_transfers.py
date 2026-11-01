@@ -59,7 +59,7 @@ def test_record_from_registry_and_end(kit: Kit) -> None:
     store = kit.transfers.record(actor="dpo", data_store_id="eu_db", destination="de")
     assert store.destination == "DE"
     assert kit.transfers.get(rec.id) == rec
-    assert [t.id for t in kit.transfers.records()] == [rec.id, store.id]
+    assert {t.id for t in kit.transfers.records()} == {rec.id, store.id}  # same timestamp, so the order isn't fixed
     ended = kit.transfers.end(rec.id, actor="dpo", reason="vendor dropped")
     assert not ended.active and ended.end_reason == "vendor dropped" and ended.ended_by == "dpo"
     assert [t.id for t in kit.transfers.records(active_only=True)] == [store.id]
