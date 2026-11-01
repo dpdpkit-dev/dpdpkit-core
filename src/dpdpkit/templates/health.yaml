@@ -1,0 +1,132 @@
+# dpdpkit purpose template: health (clinics, telemedicine, diagnostics, health and fitness apps).
+#
+# A starting point for your data-mapping workshop, not legal advice. Every purpose, retention period and line
+# of notice wording below is an assumption to confirm with your counsel before go-live.
+#
+# Health data is marked `sensitive`. Medical-record retention comes from medical and state law, not from the
+# DPDP Rules: the periods below are placeholders for the period your counsel confirms. The `health-abdm` overlay
+# (ABDM consent references, record-retention defaults) is planned for v0.5. Pharmacies, labs and hospitals you
+# share data with are usually Data Fiduciaries in their own right, not your processors; name them in the
+# purpose description instead of listing them under `processors`.
+policy: dpdp-rules-2025.v1
+overlays: []   # add `health-abdm` once it ships (v0.5)
+
+contact:
+  name: Example Health Pvt Ltd
+  email: privacy@example.in
+  rights_url: https://example.in/privacy/rights
+
+data_items:
+  - {id: name, name: Full name}
+  - {id: date_of_birth, name: Date of birth}
+  - {id: gender, name: Gender}
+  - {id: email, name: Email address}
+  - {id: phone, name: Mobile number}
+  - {id: address, name: Address}
+  - {id: emergency_contact, name: Emergency contact's name and number}
+  - {id: abha_number, name: ABHA number, category: health, sensitive: true}
+  - {id: medical_history, name: "Medical history, symptoms and allergies", category: health, sensitive: true}
+  - {id: consultation_notes, name: Consultation notes and diagnoses, category: health, sensitive: true}
+  - {id: prescriptions, name: Prescriptions, category: health, sensitive: true}
+  - {id: lab_reports, name: Lab test orders and reports, category: health, sensitive: true}
+  - {id: consultation_recordings, name: Video consultation recordings, category: health, sensitive: true}
+  - {id: payment_reference, name: Payment reference and invoice details}
+
+processors:
+  - {id: video, name: Video consultation provider, country: IN}
+  - {id: payments, name: Payment gateway, country: IN}
+  - {id: messaging, name: "SMS, WhatsApp and email delivery provider", country: IN}
+
+purposes:
+  - id: account
+    title: Create and run your patient account
+    description: We use these details to sign you in and identify you to your doctor.
+    data_items: [name, date_of_birth, gender, email, phone]
+    required: true
+    retention: {trigger: last_activity, period_days: 1095}
+  - id: consultations
+    title: Provide consultations and keep your medical records
+    description: >-
+      Your doctor uses your history, notes and test reports to treat you, and we keep the records for the
+      period medical law requires.
+    data_items: [name, date_of_birth, medical_history, consultation_notes, prescriptions, lab_reports]
+    processors: [video]
+    required: true
+    # Placeholder: medical-record retention depends on medical and state law. Confirm with counsel.
+    retention: {trigger: purpose_complete, period_days: 1095}
+  - id: lab_tests
+    title: Book lab tests and share reports with you and your doctor
+    description: >-
+      We send the test order and your sample-collection address to the lab you choose and show you the
+      report when it is ready. Reports your doctor uses stay in your medical records.
+    data_items: [name, phone, address, lab_reports]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: prescription_fulfilment
+    title: Send your prescription to the pharmacy you choose
+    description: We share your prescription and delivery address with that pharmacy so it can deliver your medicines.
+    data_items: [name, phone, address, prescriptions]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: consultation_recording
+    title: Record video consultations
+    description: A recording you and your doctor can review later. The consultation works without it.
+    data_items: [consultation_recordings]
+    processors: [video]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: abdm_linking
+    title: Link your records to your ABHA
+    description: Add your consultation records to your Ayushman Bharat Health Account so other providers can see them.
+    data_items: [abha_number, consultation_notes, lab_reports]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: emergency_care
+    title: Contact your emergency contact or a hospital in a medical emergency
+    description: Used without asking only when your life or health is under immediate threat (DPDP Act s.7(f)).
+    data_items: [name, emergency_contact, medical_history]
+    legal_basis: s7_f
+    retention: {trigger: last_activity, period_days: 1095}
+  - id: billing
+    title: Take payments
+    description: Process payments for consultations and tests, and keep invoices.
+    data_items: [name, email, payment_reference]
+    processors: [payments]
+    required: true
+    # Tax law sets how long invoices are kept; confirm the period with your accountant.
+    retention: {trigger: purpose_complete, period_days: 2190}
+  - id: reminders
+    title: Send appointment and medicine reminders
+    description: Reminders by SMS, WhatsApp or email.
+    data_items: [name, phone, email]
+    processors: [messaging]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: marketing
+    title: Tell you about health check-ups and offers
+    description: Occasional messages about packages and offers. Your medical records are never used for this.
+    data_items: [name, email, phone]
+    processors: [messaging]
+    retention: {trigger: withdrawal, period_days: 0}
+
+notice:
+  title: How we use your personal and health data
+  body: >-
+    Choose what you agree to. Nothing is selected for you, and you can change your choices at any time.
+    Saying no to optional purposes does not affect your treatment.
+  links:
+    withdraw: https://example.in/privacy/preferences
+    rights: https://example.in/privacy/rights
+    board_complaint: https://example.in/privacy/board-complaint   # replace with the Board's complaint page
+  translations:
+    hi:
+      title: हम आपके व्यक्तिगत और स्वास्थ्य डेटा का उपयोग कैसे करते हैं
+      body: >-
+        चुनें कि आप किस बात से सहमत हैं। कुछ भी पहले से चुना नहीं गया है, और आप कभी भी अपनी पसंद बदल सकते हैं।
+        वैकल्पिक उद्देश्यों के लिए मना करने से आपके इलाज पर कोई असर नहीं पड़ता।
+      purposes:
+        account: {title: आपका मरीज़ खाता बनाना और चलाना}
+        consultations: {title: परामर्श देना और आपके मेडिकल रिकॉर्ड रखना}
+        lab_tests: {title: लैब टेस्ट बुक करना और रिपोर्ट आपको और आपके डॉक्टर को दिखाना}
+        prescription_fulfilment: {title: आपका पर्चा आपकी चुनी हुई फ़ार्मेसी को भेजना}
+        consultation_recording: {title: वीडियो परामर्श रिकॉर्ड करना}
+        abdm_linking: {title: आपके रिकॉर्ड को आपके ABHA से जोड़ना}
+        emergency_care: {title: चिकित्सा आपात स्थिति में आपके आपातकालीन संपर्क या अस्पताल से संपर्क करना}
+        billing: {title: भुगतान लेना}
+        reminders: {title: अपॉइंटमेंट और दवा के रिमाइंडर भेजना}
+        marketing: {title: स्वास्थ्य जाँच और ऑफ़र की जानकारी देना}

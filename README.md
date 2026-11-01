@@ -53,6 +53,7 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 | `dpdpkit.notify` | Notifier protocol with delivery receipts; memory, console and SMTP transports |
 | `dpdpkit.ses` | Amazon SES email transport (`dpdpkit-core[ses]`); optional tracked delivery from SES events via SQS |
 | `dpdpkit.export` | Principal export (JSON, HTML) and evidence packs (CSV + PDF zip) |
+| `dpdpkit.templates` | Industry purpose templates: ed-tech, health, e-commerce, fintech, SaaS |
 | `dpdpkit.telemetry` | Opt-in anonymous usage telemetry; off by default (see below) |
 
 ## Fail-safe rules
@@ -68,6 +69,7 @@ kit.ledger.verify()  # raises LedgerTampered(row_id) if a row was edited
 
 ```bash
 dpdpkit init                                   # starter dpdpkit.yaml
+dpdpkit init --template edtech                 # industry purpose template (--list-templates)
 dpdpkit policy show | list | diff OLD NEW
 dpdpkit ledger verify --kit myapp.dpdp:kit     # exit code 2 if tampered
 dpdpkit retention preview --kit myapp.dpdp:kit

@@ -5,6 +5,9 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- Industry purpose templates (`dpdpkit.templates`): complete starter configs for ed-tech, health, e-commerce,
+  fintech and SaaS, with sector notes, retention rules and an English and Hindi notice.
+  `dpdpkit init --template ID` writes one; `dpdpkit init --list-templates` lists them.
 - `Ledger.export_root(*sinks)` writes the root hash to each `RootSink` and publishes `ledger.root_exported`.
 - `RootSink` protocol and `FileRootSink` (JSON lines; `read()`, `latest(tenant_id)`).
 - CLI: `dpdpkit ledger root --out FILE` appends to an anchor file; `dpdpkit ledger check-root --anchors FILE`

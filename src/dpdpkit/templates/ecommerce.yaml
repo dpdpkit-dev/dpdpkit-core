@@ -1,0 +1,110 @@
+# dpdpkit purpose template: e-commerce (D2C brands, marketplaces, online stores).
+#
+# A starting point for your data-mapping workshop, not legal advice. Every purpose, retention period and line
+# of notice wording below is an assumption to confirm with your counsel before go-live.
+#
+# Third Schedule. E-commerce entities with at least 2 crore registered users in India must erase data of
+# inactive users after 3 years (Rule 8(1)). If that applies to you, replace the account purpose's period with
+# `third_schedule_class: ecommerce` so the period and its start date come from the policy pack.
+policy: dpdp-rules-2025.v1
+overlays: []
+
+contact:
+  name: Example Retail Pvt Ltd
+  email: privacy@example.in
+  rights_url: https://example.in/privacy/rights
+
+data_items:
+  - {id: name, name: Full name}
+  - {id: email, name: Email address}
+  - {id: phone, name: Mobile number}
+  - {id: shipping_address, name: Delivery address}
+  - {id: order_history, name: Order history and returns}
+  - {id: invoices, name: Invoices and GST details}
+  - {id: payment_reference, name: Payment reference (never your full card number)}
+  - {id: browsing_history, name: Products viewed and searches}
+  - {id: reviews, name: Product reviews and ratings}
+  - {id: support_messages, name: Support chats and emails}
+
+processors:
+  - {id: payments, name: Payment gateway, country: IN}
+  - {id: logistics, name: Courier and logistics partner, country: IN}
+  - {id: messaging, name: "SMS, WhatsApp and email delivery provider", country: IN}
+  - {id: support_desk, name: Customer support software, country: IN}
+  - {id: analytics, name: Product analytics provider, country: IN}
+  - {id: ads, name: Advertising platform, country: IN}
+
+purposes:
+  - id: account
+    title: Create and run your account
+    description: We use these details to sign you in and show your orders.
+    data_items: [name, email, phone, order_history]
+    required: true
+    retention: {trigger: last_activity, period_days: 1095}
+    # 2 crore+ registered users? Use this instead:  retention: {third_schedule_class: ecommerce}
+  - id: orders
+    title: Process, deliver and return your orders
+    description: We share your name, phone and address with the courier only to deliver or collect your order.
+    data_items: [name, phone, shipping_address, order_history, payment_reference]
+    processors: [payments, logistics]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 180}
+  - id: invoicing
+    title: Keep invoices as tax law requires
+    description: We keep invoices and GST records for the period tax law requires, even after you close your account.
+    data_items: [name, shipping_address, invoices]
+    # Keeping records because a law requires it. Erasure leaves this purpose's data in place.
+    legal_basis: s7_d
+    # CGST Act s.36 counts from the annual-return due date; confirm the period with your accountant.
+    retention: {trigger: purpose_complete, period_days: 2190}
+  - id: support
+    title: Answer your questions and complaints
+    description: Support chats and emails, kept so we can follow up.
+    data_items: [name, email, phone, support_messages]
+    processors: [support_desk]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 365}
+  - id: reviews
+    title: Publish your product reviews
+    description: Your first name and review are shown on the product page.
+    data_items: [name, reviews]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: recommendations
+    title: Recommend products based on what you browse
+    description: Use the products you view and buy to suggest others on our site.
+    data_items: [browsing_history, order_history]
+    processors: [analytics]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: marketing
+    title: Send you offers
+    description: Emails, SMS and WhatsApp messages about sales and new products.
+    data_items: [name, email, phone]
+    processors: [messaging]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: ad_audiences
+    title: Show you our ads on other sites and apps
+    description: We share a scrambled (hashed) email or phone number with advertising platforms to show you our ads.
+    data_items: [email, phone]
+    processors: [ads]
+    retention: {trigger: withdrawal, period_days: 0}
+
+notice:
+  title: How we use your personal data
+  body: Choose what you agree to. Nothing is selected for you, and you can change your choices at any time.
+  links:
+    withdraw: https://example.in/privacy/preferences
+    rights: https://example.in/privacy/rights
+    board_complaint: https://example.in/privacy/board-complaint   # replace with the Board's complaint page
+  translations:
+    hi:
+      title: हम आपके व्यक्तिगत डेटा का उपयोग कैसे करते हैं
+      body: चुनें कि आप किस बात से सहमत हैं। कुछ भी पहले से चुना नहीं गया है, और आप कभी भी अपनी पसंद बदल सकते हैं।
+      purposes:
+        account: {title: आपका खाता बनाना और चलाना}
+        orders: {title: "आपके ऑर्डर प्रोसेस करना, पहुँचाना और वापस लेना"}
+        invoicing: {title: कर क़ानून के अनुसार चालान रखना}
+        support: {title: आपके सवालों और शिकायतों का जवाब देना}
+        reviews: {title: आपकी उत्पाद समीक्षाएँ प्रकाशित करना}
+        recommendations: {title: आप जो देखते हैं उसके आधार पर उत्पाद सुझाना}
+        marketing: {title: आपको ऑफ़र भेजना}
+        ad_audiences: {title: दूसरी साइटों और ऐप पर आपको हमारे विज्ञापन दिखाना}

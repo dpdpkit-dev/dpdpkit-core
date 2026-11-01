@@ -1,0 +1,127 @@
+# dpdpkit purpose template: ed-tech (learning apps, coaching and test prep, school and LMS platforms).
+#
+# A starting point for your data-mapping workshop, not legal advice. Every purpose, retention period and line
+# of notice wording below is an assumption to confirm with your counsel before go-live.
+#
+# Children. Most ed-tech platforms hold data of learners under 18. DPDP Act s.9 and Rule 10 need verifiable
+# consent from a parent or lawful guardian, and s.9(3) bars tracking, behavioural monitoring and targeted
+# advertising directed at children. Rule 12 and the Fourth Schedule exempt educational institutions only for
+# tracking tied to educational activities or children's safety; whether that covers you is a question for counsel.
+# dpdpkit's guardian flow (dpdpkit.guardians) and the `education` overlay are planned for v0.5. Until then,
+# verify the parent in your own sign-up flow and record their consent with kit.consent.grant().
+policy: dpdp-rules-2025.v1
+overlays: []   # add `education` once it ships (v0.5)
+
+contact:
+  name: Example Learning Pvt Ltd
+  email: privacy@example.in
+  rights_url: https://example.in/privacy/rights
+
+data_items:
+  - {id: learner_name, name: Learner's name}
+  - {id: date_of_birth, name: Date of birth, description: Used to tell whether a learner is a child}
+  - {id: parent_name, name: Parent or guardian's name}
+  - {id: parent_contact, name: Parent or guardian's email and mobile number}
+  - {id: email, name: Email address}
+  - {id: phone, name: Mobile number}
+  - {id: school_grade, name: School and class or grade}
+  - {id: course_progress, name: "Course progress, quiz answers and scores"}
+  - {id: assessment_results, name: Test results and certificates}
+  - {id: class_recordings, name: Live-class audio and video recordings}
+  - {id: payment_reference, name: Payment reference and invoice details}
+  - {id: device_usage, name: App usage and device information}
+
+processors:
+  - {id: video, name: Live-class video provider, country: IN}
+  - {id: payments, name: Payment gateway, country: IN}
+  - {id: mailer, name: Email and SMS delivery provider, country: IN}
+  - {id: analytics, name: Product analytics provider, country: IN}
+
+purposes:
+  - id: account
+    title: Create and run the learner's account
+    description: >-
+      We use these details to sign the learner in, confirm their age and, for learners under 18, record
+      the consent of their parent or guardian.
+    data_items: [learner_name, date_of_birth, email, phone, parent_name, parent_contact]
+    required: true
+    retention: {trigger: last_activity, period_days: 1095}
+  - id: learning
+    title: Deliver courses and track progress
+    description: Lessons, quizzes and progress reports that are part of the course.
+    data_items: [learner_name, school_grade, course_progress]
+    required: true
+    retention: {trigger: last_activity, period_days: 1095}
+  - id: live_classes
+    title: Run live classes
+    description: Live online classes that are part of the course.
+    data_items: [learner_name]
+    processors: [video]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 180}
+  - id: class_recordings
+    title: Record live classes the learner attends
+    description: Recordings the learner can watch again. Classes work without them.
+    data_items: [learner_name, class_recordings]
+    processors: [video]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: assessments
+    title: Issue test results and certificates
+    description: Marks and certificates you can download or share with a school.
+    data_items: [learner_name, assessment_results]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 1095}
+  - id: billing
+    title: Take fee payments
+    description: Process fee payments and keep invoices.
+    data_items: [parent_name, email, payment_reference]
+    processors: [payments]
+    required: true
+    # Tax law sets how long invoices are kept; confirm the period with your accountant.
+    retention: {trigger: purpose_complete, period_days: 2190}
+  - id: parent_updates
+    title: Send progress updates to the parent or guardian
+    description: Weekly progress reports and attendance alerts.
+    data_items: [parent_name, parent_contact, course_progress]
+    processors: [mailer]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: product_improvement
+    title: Improve the app (adult learners only)
+    description: >-
+      Usage statistics to find and fix problems. Not used for learners under 18, whose activity must not be
+      tracked or monitored outside their courses.
+    data_items: [device_usage]
+    processors: [analytics]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: marketing
+    title: Tell you about new courses (adult learners and parents only)
+    description: Occasional emails about new courses and offers. Never targeted at learners under 18.
+    data_items: [email, phone]
+    processors: [mailer]
+    retention: {trigger: withdrawal, period_days: 0}
+
+notice:
+  title: How we use your and your child's personal data
+  body: >-
+    Choose what you agree to. Nothing is selected for you, and you can change your choices at any time.
+    If the learner is under 18, a parent or guardian must make these choices.
+  links:
+    withdraw: https://example.in/privacy/preferences
+    rights: https://example.in/privacy/rights
+    board_complaint: https://example.in/privacy/board-complaint   # replace with the Board's complaint page
+  translations:
+    hi:
+      title: हम आपके और आपके बच्चे के व्यक्तिगत डेटा का उपयोग कैसे करते हैं
+      body: >-
+        चुनें कि आप किस बात से सहमत हैं। कुछ भी पहले से चुना नहीं गया है, और आप कभी भी अपनी पसंद बदल सकते हैं।
+        यदि शिक्षार्थी 18 वर्ष से कम आयु का है, तो माता-पिता या अभिभावक को ये विकल्प चुनने होंगे।
+      purposes:
+        account: {title: शिक्षार्थी का खाता बनाना और चलाना}
+        learning: {title: पाठ्यक्रम देना और प्रगति दर्ज करना}
+        live_classes: {title: लाइव कक्षाएँ चलाना}
+        class_recordings: {title: शिक्षार्थी की लाइव कक्षाएँ रिकॉर्ड करना}
+        assessments: {title: परीक्षा परिणाम और प्रमाणपत्र जारी करना}
+        billing: {title: शुल्क का भुगतान लेना}
+        parent_updates: {title: माता-पिता या अभिभावक को प्रगति की जानकारी भेजना}
+        product_improvement: {title: ऐप को बेहतर बनाना (केवल वयस्क शिक्षार्थी)}
+        marketing: {title: नए पाठ्यक्रमों की जानकारी देना (केवल वयस्क शिक्षार्थी और माता-पिता)}

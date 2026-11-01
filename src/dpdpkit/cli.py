@@ -30,6 +30,7 @@ from .errors import DpdpkitError, LedgerTampered
 from .kit import Kit
 from .ledger import FileRootSink
 from .policy import Policy, available_packs
+from .templates import list_templates, load_template
 
 
 def load_kit(spec: str | None) -> Kit:
@@ -51,13 +52,18 @@ def load_kit(spec: str | None) -> Kit:
 
 
 def _cmd_init(args: argparse.Namespace) -> int:
+    if args.list_templates:
+        for template in list_templates():
+            print(f"{template.id:<10} {template.title}: {template.summary}")
+        return 0
+    text = load_template(args.template).text if args.template else STARTER_CONFIG
     target = Path(args.dir) / "dpdpkit.yaml"
     if target.exists() and not args.force:
         print(f"{target} already exists (use --force to overwrite)", file=sys.stderr)
         return 1
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(STARTER_CONFIG, encoding="utf-8")
-    print(f"wrote {target}")
+    target.write_text(text, encoding="utf-8")
+    print(f"wrote {target}" + (f" from the {args.template} purpose template" if args.template else ""))
     print("next: edit purposes and notice text, then wire a repository (see your adapter's quickstart)")
     return 0
 
@@ -200,6 +206,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("init", help="write a starter dpdpkit.yaml")
     p.add_argument("--dir", default=".")
     p.add_argument("--force", action="store_true")
+    p.add_argument("--template", help="start from an industry purpose template (see --list-templates)")
+    p.add_argument("--list-templates", action="store_true", help="list the industry purpose templates")
     p.set_defaults(func=_cmd_init)
 
     p = sub.add_parser("policy", help="show, list or diff policy packs")

@@ -1,0 +1,118 @@
+# dpdpkit purpose template: fintech (payments, lending, wallets, investment and insurance distribution apps).
+#
+# A starting point for your data-mapping workshop, not legal advice. Every purpose, retention period, legal
+# basis and line of notice wording below is an assumption to confirm with your counsel before go-live.
+#
+# Sector law sets most retention here. KYC and transaction records are kept under the PML Act and RBI, SEBI or
+# IRDAI directions after the customer leaves, so those purposes use legal basis `s7_d` and erasure leaves their
+# data in place. Confirm the legal basis and periods for your licence type. The `rbi-kyc` overlay (KYC
+# retention, legal-hold reason codes) is planned for v0.5. Store only a masked Aadhaar number or an Aadhaar
+# Data Vault reference, never the full number.
+policy: dpdp-rules-2025.v1
+overlays: []   # add `rbi-kyc` once it ships (v0.5)
+
+contact:
+  name: Example Fintech Pvt Ltd
+  email: privacy@example.in
+  rights_url: https://example.in/privacy/rights
+
+data_items:
+  - {id: name, name: Full name}
+  - {id: date_of_birth, name: Date of birth}
+  - {id: email, name: Email address}
+  - {id: phone, name: Mobile number}
+  - {id: address, name: Address}
+  - {id: pan, name: PAN, category: identity, sensitive: true}
+  - {id: aadhaar_reference, name: Masked Aadhaar number or vault reference, category: identity, sensitive: true}
+  - {id: kyc_documents, name: "KYC documents, photo and video-KYC recording", category: identity, sensitive: true}
+  - {id: bank_account, name: Bank account and UPI details, category: financial, sensitive: true}
+  - {id: transactions, name: Transaction history, category: financial, sensitive: true}
+  - {id: income_details, name: Income and employment details, category: financial, sensitive: true}
+  - {id: credit_report, name: Credit report and score, category: financial, sensitive: true}
+  - {id: bank_statements, name: Bank statements fetched through an Account Aggregator, category: financial, sensitive: true}
+  - {id: device_signals, name: "Device identifiers, IP address and location at login"}
+
+processors:
+  - {id: kyc_vendor, name: KYC and video-KYC provider, country: IN}
+  - {id: payments, name: Payment and banking partner, country: IN}
+  - {id: messaging, name: "SMS, WhatsApp and email delivery provider", country: IN}
+  - {id: fraud_vendor, name: Fraud-detection provider, country: IN}
+
+purposes:
+  - id: account
+    title: Create and run your account
+    description: We use these details to sign you in and secure your account.
+    data_items: [name, email, phone, device_signals]
+    required: true
+    retention: {trigger: last_activity, period_days: 1095}
+  - id: kyc
+    title: Verify your identity (KYC)
+    description: >-
+      Identity checks that the law requires before we can serve you. We keep KYC records for the period
+      the law requires after you close your account.
+    data_items: [name, date_of_birth, address, pan, aadhaar_reference, kyc_documents]
+    processors: [kyc_vendor]
+    # Kept because a law requires it; erasure leaves this purpose's data in place. Confirm the basis with counsel.
+    legal_basis: s7_d
+    # PML Rules: 5 years after the business relationship ends. Mark the purpose complete when the account closes.
+    retention: {trigger: purpose_complete, period_days: 1826}
+  - id: transactions
+    title: Process your payments and keep transaction records
+    description: Move money as you instruct and keep the records the law requires.
+    data_items: [name, bank_account, transactions]
+    processors: [payments]
+    legal_basis: s7_d
+    retention: {trigger: purpose_complete, period_days: 1826}
+  - id: credit_assessment
+    title: Assess your loan or credit application
+    description: >-
+      We check your income and fetch your credit report from a credit bureau to decide on your application.
+    data_items: [name, pan, income_details, credit_report]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 1826}
+  - id: credit_reporting
+    title: Report your loan repayments to credit bureaus
+    description: Lenders must report repayments to credit bureaus, which use them to build your credit history.
+    data_items: [name, pan, transactions]
+    required: true
+    # Counsel: decide whether this rests on consent or on the lender's legal obligation.
+    retention: {trigger: purpose_complete, period_days: 1826}
+  - id: fraud_prevention
+    title: Detect and prevent fraud
+    description: We check logins and payments for signs of fraud to protect your money.
+    data_items: [device_signals, transactions]
+    processors: [fraud_vendor]
+    required: true
+    retention: {trigger: last_activity, period_days: 365}
+  - id: account_aggregator
+    title: Fetch your bank statements through an Account Aggregator
+    description: Speeds up loan decisions. You approve each request in your Account Aggregator app.
+    data_items: [bank_statements]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: marketing
+    title: Tell you about new products and offers
+    description: Occasional messages about loans, cards and investment products.
+    data_items: [name, email, phone]
+    processors: [messaging]
+    retention: {trigger: withdrawal, period_days: 0}
+
+notice:
+  title: How we use your personal and financial data
+  body: Choose what you agree to. Nothing is selected for you, and you can change your choices at any time.
+  links:
+    withdraw: https://example.in/privacy/preferences
+    rights: https://example.in/privacy/rights
+    board_complaint: https://example.in/privacy/board-complaint   # replace with the Board's complaint page
+  translations:
+    hi:
+      title: हम आपके व्यक्तिगत और वित्तीय डेटा का उपयोग कैसे करते हैं
+      body: चुनें कि आप किस बात से सहमत हैं। कुछ भी पहले से चुना नहीं गया है, और आप कभी भी अपनी पसंद बदल सकते हैं।
+      purposes:
+        account: {title: आपका खाता बनाना और चलाना}
+        kyc: {title: आपकी पहचान सत्यापित करना (KYC)}
+        transactions: {title: आपके भुगतान प्रोसेस करना और लेन-देन के रिकॉर्ड रखना}
+        credit_assessment: {title: आपके ऋण या क्रेडिट आवेदन का आकलन करना}
+        credit_reporting: {title: आपके ऋण भुगतान की जानकारी क्रेडिट ब्यूरो को देना}
+        fraud_prevention: {title: धोखाधड़ी का पता लगाना और रोकना}
+        account_aggregator: {title: अकाउंट एग्रीगेटर के ज़रिए आपके बैंक स्टेटमेंट प्राप्त करना}
+        marketing: {title: नए उत्पादों और ऑफ़र की जानकारी देना}

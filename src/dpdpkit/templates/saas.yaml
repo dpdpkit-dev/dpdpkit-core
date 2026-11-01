@@ -1,0 +1,105 @@
+# dpdpkit purpose template: B2B SaaS (business software sold to companies, used by their staff).
+#
+# A starting point for your data-mapping workshop, not legal advice. Every purpose, retention period and line
+# of notice wording below is an assumption to confirm with your counsel before go-live.
+#
+# Two roles. For the data your customers put into the product (their own customers, employees or leads) you
+# are usually their Data Processor: your contract with them governs it, and their dpdpkit install, not yours,
+# records consent for it. This template covers the data you hold as a Data Fiduciary: the people who sign up,
+# administer and pay for the product, and the visitors and leads you market to.
+policy: dpdp-rules-2025.v1
+overlays: []
+
+contact:
+  name: Example Software Pvt Ltd
+  email: privacy@example.in
+  rights_url: https://example.in/privacy/rights
+
+data_items:
+  - {id: name, name: Full name}
+  - {id: work_email, name: Work email address}
+  - {id: phone, name: Mobile number}
+  - {id: company, name: Company name and job title}
+  - {id: login_activity, name: "Sign-in history, IP address and device"}
+  - {id: product_usage, name: Features used and in-app events}
+  - {id: billing_details, name: "Billing contact, GSTIN and invoices"}
+  - {id: payment_reference, name: Payment reference (never your full card number)}
+  - {id: support_messages, name: Support tickets and chats}
+  - {id: call_recordings, name: Sales and onboarding call recordings}
+
+processors:
+  - {id: hosting, name: Cloud hosting provider, country: IN}
+  - {id: payments, name: Payment gateway, country: IN}
+  - {id: mailer, name: Email delivery provider, country: IN}
+  - {id: support_desk, name: Customer support software, country: IN}
+  - {id: analytics, name: Product analytics provider, country: IN}
+  - {id: crm, name: CRM and sales tools, country: IN}
+
+purposes:
+  - id: account
+    title: Create and run your user account
+    description: We use these details to sign you in, secure your account and show you your workspace.
+    data_items: [name, work_email, company, login_activity]
+    processors: [hosting]
+    required: true
+    retention: {trigger: last_activity, period_days: 730}
+  - id: service_emails
+    title: Send service emails
+    description: Password resets, security alerts, invoices and notices of changes to the service.
+    data_items: [name, work_email]
+    processors: [mailer]
+    required: true
+    retention: {trigger: last_activity, period_days: 730}
+  - id: billing
+    title: Bill your company
+    description: Subscriptions, invoices and GST records.
+    data_items: [name, work_email, billing_details, payment_reference]
+    processors: [payments]
+    required: true
+    # Tax law sets how long invoices are kept; confirm the period with your accountant.
+    retention: {trigger: purpose_complete, period_days: 2190}
+  - id: support
+    title: Answer support requests
+    description: Tickets and chats, kept so we can follow up and spot recurring problems.
+    data_items: [name, work_email, support_messages]
+    processors: [support_desk]
+    required: true
+    retention: {trigger: purpose_complete, period_days: 365}
+  - id: product_analytics
+    title: Improve the product from usage data
+    description: Which features you use, so we can fix problems and decide what to build next.
+    data_items: [product_usage]
+    processors: [analytics]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: call_recording
+    title: Record sales and onboarding calls
+    description: Recordings for training and to check what we agreed. Calls work without them.
+    data_items: [name, call_recordings]
+    processors: [crm]
+    retention: {trigger: withdrawal, period_days: 0}
+  - id: marketing
+    title: Send you product news and invitations
+    description: Newsletters, webinar invitations and offers.
+    data_items: [name, work_email, phone, company]
+    processors: [mailer, crm]
+    retention: {trigger: withdrawal, period_days: 0}
+
+notice:
+  title: How we use your personal data
+  body: Choose what you agree to. Nothing is selected for you, and you can change your choices at any time.
+  links:
+    withdraw: https://example.in/privacy/preferences
+    rights: https://example.in/privacy/rights
+    board_complaint: https://example.in/privacy/board-complaint   # replace with the Board's complaint page
+  translations:
+    hi:
+      title: हम आपके व्यक्तिगत डेटा का उपयोग कैसे करते हैं
+      body: चुनें कि आप किस बात से सहमत हैं। कुछ भी पहले से चुना नहीं गया है, और आप कभी भी अपनी पसंद बदल सकते हैं।
+      purposes:
+        account: {title: आपका यूज़र खाता बनाना और चलाना}
+        service_emails: {title: सेवा से जुड़े ईमेल भेजना}
+        billing: {title: आपकी कंपनी को बिल भेजना}
+        support: {title: सहायता अनुरोधों का जवाब देना}
+        product_analytics: {title: उपयोग डेटा से उत्पाद को बेहतर बनाना}
+        call_recording: {title: सेल्स और ऑनबोर्डिंग कॉल रिकॉर्ड करना}
+        marketing: {title: आपको उत्पाद की ख़बरें और आमंत्रण भेजना}
