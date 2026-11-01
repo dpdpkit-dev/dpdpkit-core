@@ -17,6 +17,7 @@ dependencies = ["dpdpkit-core==0.1.0a1"]
 [project.optional-dependencies]
 fastapi = ["dpdpkit-fastapi>=0.1.0a1,<0.2"]
 ses = ["dpdpkit-core[ses]==0.1.0a1"]
+workbook = ["dpdpkit-core[workbook]==0.1.0a1"]
 
 [project.urls]
 Homepage = "https://github.com/dpdpkit-dev"

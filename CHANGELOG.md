@@ -5,6 +5,12 @@ All code packages in the dpdpkit release train share one version number.
 ## Unreleased
 
 ### Added
+- Data-mapping workbook and scan-report template (`dpdpkit.workbook`, optional `workbook` extra, openpyxl):
+  `dpdpkit workbook new [--template ID | --from dpdpkit.yaml]` writes an `.xlsx` workbook with sheets for data
+  stores, scan findings, data items, processors, purposes and a gap list of readiness checks mapped to dpdpkit
+  features; `dpdpkit workbook import` checks every row and writes `dpdpkit.yaml` (keeping the notice from
+  `--base`); `dpdpkit workbook report` renders the client-facing PII scan report in Markdown, counts only.
+- `dpdpkit[workbook]` extra on the meta-package.
 - Industry purpose templates (`dpdpkit.templates`): complete starter configs for ed-tech, health, e-commerce,
   fintech and SaaS, with sector notes, retention rules and an English and Hindi notice.
   `dpdpkit init --template ID` writes one; `dpdpkit init --list-templates` lists them.
