@@ -4,6 +4,8 @@ All code packages in the dpdpkit release train share one version number.
 
 ## Unreleased
 
+## 0.1.0a2 - 2026-11-02
+
 ### Added
 - `kit.consent.stats()`: grants, denials and withdrawals per purpose and notice version, with no personal data, for
   the admin dashboard. A withdrawal counts against the notice version last granted.

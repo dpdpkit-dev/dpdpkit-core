@@ -28,7 +28,7 @@ dependencies = [
   "pydantic>=2.6,<3",
   "pyyaml>=6.0",
   "typing-extensions>=4.5",
-  "dpdpkit-policies>=2026.10.0a1",
+  "dpdpkit-policies>=2026.11.0a1",
 ]
 
 [project.optional-dependencies]
